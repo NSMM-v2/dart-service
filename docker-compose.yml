@@ -25,7 +25,7 @@ services:
     depends_on:
       - zookeeper
     ports:
-      - "9093:9093" # 포트 변경 (9093 → 9094)
+      - "9093:9093" # 포트 변경
       - "9092:9092" # 내부 통신용
       - "9101:9101" # JMX 포트
     environment:
