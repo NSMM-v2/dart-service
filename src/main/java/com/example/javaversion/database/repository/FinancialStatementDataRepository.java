@@ -17,21 +17,22 @@ public interface FinancialStatementDataRepository extends JpaRepository<Financia
     /**
      * 회사 코드, 사업연도, 보고서 코드로 재무제표 항목 리스트를 조회합니다.
      *
-     * @param corpCode 회사 고유번호
-     * @param bsnsYear 사업 연도
+     * @param corpCode  회사 고유번호
+     * @param bsnsYear  사업 연도
      * @param reprtCode 보고서 코드
      * @return 재무제표 항목 리스트
      */
-    List<FinancialStatementData> findByCorpCodeAndBsnsYearAndReprtCode(String corpCode, String bsnsYear, String reprtCode);
+    List<FinancialStatementData> findByCorpCodeAndBsnsYearAndReprtCode(String corpCode, String bsnsYear,
+            String reprtCode);
 
     /**
      * 회사 코드, 사업연도, 보고서 코드로 재무제표 항목들을 삭제합니다.
      *
-     * @param corpCode 회사 고유번호
-     * @param bsnsYear 사업 연도
+     * @param corpCode  회사 고유번호
+     * @param bsnsYear  사업 연도
      * @param reprtCode 보고서 코드
      * @return 삭제된 항목 수
      */
     long deleteByCorpCodeAndBsnsYearAndReprtCode(String corpCode, String bsnsYear, String reprtCode);
 
-} 
+}
