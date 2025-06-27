@@ -42,8 +42,6 @@ dependencies {
     // Kafka
     implementation 'org.springframework.kafka:spring-kafka'
 
-    // H2 Database (for development)
-    runtimeOnly 'com.h2database:h2'
 
     // Lombok
     compileOnly 'org.projectlombok:lombok'
