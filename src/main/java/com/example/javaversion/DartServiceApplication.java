@@ -15,10 +15,10 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @EnableDiscoveryClient
 @EnableCaching
 @EnableScheduling
-public class JavaVersionApplication {
+public class DartServiceApplication {
 
     public static void main(String[] args) {
-        SpringApplication.run(JavaVersionApplication.class, args);
+        SpringApplication.run(DartServiceApplication.class, args);
     }
 
 }
