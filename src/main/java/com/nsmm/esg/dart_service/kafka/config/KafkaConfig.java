@@ -40,12 +40,12 @@ public class KafkaConfig {
         configProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
         configProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
         configProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
-        
+
         // 로컬 개발환경에서 Kafka 내부 hostname 해석 문제 해결
         configProps.put("client.dns.lookup", "use_all_dns_ips");
         configProps.put("reconnect.backoff.ms", 1000);
         configProps.put("reconnect.backoff.max.ms", 10000);
-        
+
         return new DefaultKafkaProducerFactory<>(configProps);
     }
 
@@ -62,13 +62,14 @@ public class KafkaConfig {
         props.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
         props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
         props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
-        props.put(JsonDeserializer.TRUSTED_PACKAGES, "com.example.javaversion.partner.dto,com.example.javaversion.dart.dto");
-        
+        props.put(JsonDeserializer.TRUSTED_PACKAGES,
+                "com.nsmm.esg.dart_service.partner.dto,com.nsmm.esg.dart_service.dart.dto");
+
         // 로컬 개발환경에서 Kafka 내부 hostname 해석 문제 해결
         props.put(ConsumerConfig.CLIENT_DNS_LOOKUP_CONFIG, "use_all_dns_ips");
         props.put("reconnect.backoff.ms", 1000);
         props.put("reconnect.backoff.max.ms", 10000);
-        
+
         return new DefaultKafkaConsumerFactory<>(props);
     }
 
@@ -78,4 +79,4 @@ public class KafkaConfig {
         factory.setConsumerFactory(consumerFactory());
         return factory;
     }
-} 
+}

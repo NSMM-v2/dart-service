@@ -1,6 +1,13 @@
+# ============================================================================
+# DART Service용 Kafka 인프라 Docker Compose
+# ============================================================================
+
 version: "3.8"
 
 services:
+  # ========================================================================
+  # Zookeeper - Kafka 클러스터 코디네이션
+  # ========================================================================
   zookeeper:
     image: confluentinc/cp-zookeeper:7.4.0
     hostname: zookeeper
@@ -10,90 +17,117 @@ services:
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
-      ZOOKEEPER_LOG4J_ROOT_LOGLEVEL: INFO
+      ZOOKEEPER_INIT_LIMIT: 5
+      ZOOKEEPER_SYNC_LIMIT: 2
     volumes:
       - zookeeper-data:/var/lib/zookeeper/data
       - zookeeper-logs:/var/lib/zookeeper/log
     networks:
-      - dart-kafka-network
+      - dart-network
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "bash", "-c", "echo 'ruok' | nc localhost 2181"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
+  # ========================================================================
+  # Kafka Broker - 메시지 브로커
+  # ========================================================================
   kafka:
     image: confluentinc/cp-kafka:7.4.0
     hostname: kafka
-    container_name: dart-kafka-broker
+    container_name: dart-kafka
     depends_on:
-      - zookeeper
+      zookeeper:
+        condition: service_healthy
     ports:
-      - "9093:9093" # 포트 변경
-      - "9092:9092" # 내부 통신용
-      - "9101:9101" # JMX 포트
+      - "9093:9093" # DART Service 설정과 일치
+      - "9092:9092" # 추가 외부 접속용
     environment:
+      # 기본 Kafka 설정
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: "zookeeper:2181"
+
+      # 리스너 설정 (내부/외부 통신)
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:9094
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9093
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:29092,PLAINTEXT_HOST://0.0.0.0:9093
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+
+      # 성능 및 안정성 설정
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
-      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
       KAFKA_JMX_PORT: 9101
       KAFKA_JMX_HOSTNAME: localhost
-      # 로그 레벨 설정
-      KAFKA_LOG4J_LOGGERS: "kafka.controller=INFO,kafka.producer.async.DefaultEventHandler=INFO,state.change.logger=INFO"
-      KAFKA_LOG4J_ROOT_LOGLEVEL: INFO
+
+      # 로그 설정
+      KAFKA_LOG_RETENTION_HOURS: 168 # 7일
+      KAFKA_LOG_SEGMENT_BYTES: 1073741824 # 1GB
+      KAFKA_LOG_RETENTION_CHECK_INTERVAL_MS: 300000 # 5분
+
+      # 토픽 자동 생성 허용
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_DELETE_TOPIC_ENABLE: "true"
+
+      # 기본 토픽 설정
+      KAFKA_NUM_PARTITIONS: 3
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 1
     volumes:
       - kafka-data:/var/lib/kafka/data
     networks:
-      - dart-kafka-network
-    healthcheck:
-      test: kafka-broker-api-versions --bootstrap-server localhost:9092
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 30s
+      - dart-network
     restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "kafka-broker-api-versions",
+          "--bootstrap-server",
+          "localhost:9093",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-  # Kafka 토픽 초기화 서비스
-  kafka-setup:
-    image: confluentinc/cp-kafka:7.4.0
-    container_name: dart-kafka-setup
+  # ========================================================================
+  # Kafka UI - 관리 및 모니터링 도구 (포트 수정: 외부 8090, 내부 8080)
+  # ========================================================================
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: dart-kafka-ui
     depends_on:
       kafka:
         condition: service_healthy
+    ports:
+      - "8090:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: dart-kafka-cluster
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
+      KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
+      # UI 설정
+      DYNAMIC_CONFIG_ENABLED: "true"
+      LOGGING_LEVEL_COM_PROVECTUS: INFO
+      # 한국어 지원을 위한 타임존 설정
+      TZ: Asia/Seoul
     networks:
-      - dart-kafka-network
-    command: |
-      bash -c "
-        echo 'DART 서비스용 Kafka 토픽 생성 중...'
-        
-        # DART 서비스 전용 토픽 생성 (이미 존재하면 무시)
-        kafka-topics --create --if-not-exists --bootstrap-server kafka:9092 --partitions 1 --replication-factor 1 --topic company-profile
-        kafka-topics --create --if-not-exists --bootstrap-server kafka:9092 --partitions 1 --replication-factor 1 --topic disclosure
-        kafka-topics --create --if-not-exists --bootstrap-server kafka:9092 --partitions 1 --replication-factor 1 --topic partner-company
-        
-        # 토픽 목록 확인
-        echo '생성된 DART 서비스 토픽 목록:'
-        kafka-topics --list --bootstrap-server kafka:9092
-        
-        echo 'DART 서비스용 Kafka 토픽 생성 완료!'
-        echo '- company-profile: 회사 정보 처리'
-        echo '- disclosure: 공시 정보 처리'  
-        echo '- partner-company: 파트너 회사 정보 처리'
-      "
-    restart: "no"
+      - dart-network
+    restart: unless-stopped
+
+# ============================================================================
+# 네트워크 및 볼륨 설정
+# ============================================================================
+networks:
+  dart-network:
+    driver: bridge
+    name: dart-network
 
 volumes:
   zookeeper-data:
-    driver: local
+    name: dart-zookeeper-data
   zookeeper-logs:
-    driver: local
+    name: dart-zookeeper-logs
   kafka-data:
-    driver: local
-
-networks:
-  dart-kafka-network:
-    driver: bridge
-    name: dart-kafka-network
+    name: dart-kafka-data

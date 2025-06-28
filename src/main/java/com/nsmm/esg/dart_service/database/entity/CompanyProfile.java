@@ -48,59 +48,59 @@ import lombok.AllArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class CompanyProfile {
-    
+
     @Id
     @Column(name = "corp_code", length = 8)
     private String corpCode; // DART 고유번호
-    
+
     @Column(name = "corp_name", nullable = false)
     private String corpName; // 정식 회사명
-    
+
     @Column(name = "corp_name_eng")
     private String corpNameEng; // 영문 회사명
-    
+
     @Column(name = "stock_code", length = 6)
     private String stockCode; // 종목 코드
-    
+
     @Column(name = "ceo_name")
     private String ceoName; // 대표이사명
-    
+
     @Column(name = "corp_class", length = 10)
     private String corpClass; // 시장 구분
-    
+
     @Column(name = "business_number", length = 13)
     private String businessNumber; // 사업자등록번호
-    
+
     @Column(name = "corporate_registration_number", length = 13)
     private String corporateRegistrationNumber; // 법인등록번호
-    
+
     @Column(name = "address", length = 500)
     private String address; // 주소
-    
+
     @Column(name = "homepage_url", length = 200)
     private String homepageUrl; // 홈페이지 URL
-    
+
     @Column(name = "ir_url", length = 200)
     private String irUrl; // IR URL
-    
+
     @Column(name = "phone_number", length = 20)
     private String phoneNumber; // 전화번호
-    
+
     @Column(name = "fax_number", length = 20)
     private String faxNumber; // 팩스번호
-    
+
     @Column(name = "industry", length = 200)
     private String industry; // 업종
-    
+
     @Column(name = "establishment_date", length = 8)
     private String establishmentDate; // 설립일 (YYYYMMDD)
-    
+
     @Column(name = "accounting_month", length = 2)
     private String accountingMonth; // 결산월 (MM)
-    
+
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
-    
+
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
-} 
+}

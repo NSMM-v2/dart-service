@@ -50,13 +50,13 @@ public class DartCorpCode {
 
     @Column(name = "modify_date", nullable = false)
     private String modifyDate; // 최종변경일자 (YYYYMMDD)
-    
+
     @Column(name = "corp_cls", length = 1) // Y: 유가, K: 코스닥, N: 코넥스, E: 기타
-    private String corpCls; 
+    private String corpCls;
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
-} 
+}
