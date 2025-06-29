@@ -15,9 +15,11 @@ import com.nsmm.esg.dart_service.dart.dto.DisclosureSearchResponse;
 import com.nsmm.esg.dart_service.dart.dto.FinancialStatementResponseDto;
 import com.nsmm.esg.dart_service.dart.service.DartApiService;
 import com.nsmm.esg.dart_service.database.entity.CompanyProfile;
+import com.nsmm.esg.dart_service.database.entity.DartCorpCode;
 import com.nsmm.esg.dart_service.database.entity.Disclosure;
 import com.nsmm.esg.dart_service.database.entity.FinancialStatementData;
 import com.nsmm.esg.dart_service.database.repository.CompanyProfileRepository;
+import com.nsmm.esg.dart_service.database.repository.DartCorpCodeRepository;
 import com.nsmm.esg.dart_service.database.repository.DisclosureRepository;
 import com.nsmm.esg.dart_service.database.repository.FinancialStatementDataRepository;
 import com.nsmm.esg.dart_service.database.repository.PartnerCompanyRepository;
@@ -49,6 +51,7 @@ public class KafkaConsumerService {
     private final DisclosureRepository disclosureRepository;
     private final FinancialStatementDataRepository financialStatementDataRepository;
     private final KafkaProducerService kafkaProducerService;
+    private final DartCorpCodeRepository dartCorpCodeRepository;
 
     @Value("${dart.api.key}")
     private String dartApiKey;
@@ -173,15 +176,26 @@ public class KafkaConsumerService {
                 return profileOptional.get();
             } else {
                 // DART API에서 정보를 가져오지 못한 경우, 기본 프로필 생성
-                log.info("DART API에서 정보를 가져오지 못해 기본 회사 프로필 생성: corpCode={}", corpCode);
+                log.warn("DART API에서 정보를 가져오지 못해 기본 회사 프로필 생성: corpCode={}", corpCode);
 
-                // 기본 회사명 설정
+                // DartCorpCode에서 회사명 정보 조회 시도
                 String companyName = "정보 없음"; // 기본값
+                try {
+                    Optional<DartCorpCode> dartCorpCodeOpt = dartCorpCodeRepository.findById(corpCode);
+                    if (dartCorpCodeOpt.isPresent()) {
+                        companyName = dartCorpCodeOpt.get().getCorpName();
+                        log.info("DartCorpCode에서 회사명 조회 성공: corpCode={}, corpName={}", corpCode, companyName);
+                    } else {
+                        log.warn("DartCorpCode에서도 회사명을 찾을 수 없음: corpCode={}", corpCode);
+                    }
+                } catch (Exception e) {
+                    log.error("DartCorpCode 조회 중 오류 발생: corpCode={}", corpCode, e);
+                }
 
                 LocalDateTime now = LocalDateTime.now();
                 CompanyProfile defaultProfile = CompanyProfile.builder()
                         .corpCode(corpCode)
-                        .corpName(companyName) // 기본 회사명 "정보 없음"
+                        .corpName(companyName) // DartCorpCode에서 가져온 회사명 또는 "정보 없음"
                         .createdAt(now)
                         .updatedAt(now)
                         .build();

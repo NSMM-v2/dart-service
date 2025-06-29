@@ -247,27 +247,18 @@ public class DartApiService {
      * @return 회사 정보 응답 Mono
      */
     public Mono<CompanyProfileResponse> getCompanyProfile(String corpCode) {
-        log.info("회사 정보 조회 API 호출 (프로그래밍 방식 캐싱): {}", corpCode);
+        log.info("회사 정보 조회 API 호출 (캐시 우회 - 디버깅용): {}", corpCode);
 
-        String cacheName = "companyProfiles";
-
-        // 1. 캐시에서 먼저 조회 (동기 호출을 Reactive 스트림으로 감싸기)
-        return Mono.fromCallable(() -> cacheService.get(cacheName, corpCode))
-                .flatMap(cachedValue -> {
-                    if (cachedValue instanceof CompanyProfileResponse) {
-                        log.info("캐시 히트: key={}", corpCode);
-                        return Mono.just((CompanyProfileResponse) cachedValue);
+        // 캐시를 우회하고 직접 API 호출 (디버깅용)
+        log.info("캐시 우회하고 DART API 직접 호출: {}", corpCode);
+        return webClientService.getCompanyProfile(corpCode)
+                .doOnSuccess(profile -> {
+                    if (profile != null) {
+                        log.info("DART API 호출 성공: corpCode={}, status={}, corpName={}",
+                                corpCode, profile.getStatus(), profile.getCorpName());
+                    } else {
+                        log.warn("DART API 호출 결과가 null: corpCode={}", corpCode);
                     }
-                    log.info("캐시에 '{}' 키에 대한 회사 정보 없음 또는 타입 불일치. API 직접 호출: {}", corpCode, corpCode);
-                    // 2. 캐시에 없으면 API 호출
-                    return webClientService.getCompanyProfile(corpCode)
-                            .doOnSuccess(profile -> {
-                                if (profile != null) {
-                                    // 3. API 호출 성공 시 캐시에 저장 (동기 호출)
-                                    cacheService.put(cacheName, corpCode, profile);
-                                    log.info("API 응답을 캐시에 저장: key={}, value={}", corpCode, profile);
-                                }
-                            });
                 })
                 .doOnError(error -> log.error("회사 정보 조회 중 오류 발생: corpCode={}", corpCode, error));
     }

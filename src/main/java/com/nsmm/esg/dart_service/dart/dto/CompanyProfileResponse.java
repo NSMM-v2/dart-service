@@ -10,10 +10,12 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.Builder;
 
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 @Schema(description = "DART API로부터 받은 회사 개황 정보 응답 DTO")
 public class CompanyProfileResponse {
 
@@ -37,13 +39,13 @@ public class CompanyProfileResponse {
     @Schema(description = "영문 회사명", example = "SAMSUNG ELECTRONICS CO,.LTD")
     private String corpNameEng;
 
-    @JsonProperty("stock_code")
-    @Schema(description = "종목 코드 (상장된 경우, 6자리)", example = "005930", nullable = true)
-    private String stockCode;
-
     @JsonProperty("stock_name")
     @Schema(description = "종목명", example = "삼성전자")
     private String stockName;
+
+    @JsonProperty("stock_code")
+    @Schema(description = "종목 코드 (상장된 경우, 6자리)", example = "005930", nullable = true)
+    private String stockCode;
 
     @JsonProperty("ceo_nm")
     @Schema(description = "대표이사명", example = "한종희")
@@ -54,12 +56,12 @@ public class CompanyProfileResponse {
     private String corpClass;
 
     @JsonProperty("jurir_no")
-    @Schema(description = "법인등록번호", example = "130111-0006246")
-    private String corporateRegistrationNumber;
-
-    @JsonProperty("bizr_no")
     @Schema(description = "사업자등록번호", example = "124-81-00998")
     private String businessNumber;
+
+    @JsonProperty("bizr_no")
+    @Schema(description = "법인등록번호", example = "130111-0006246")
+    private String corporateRegistrationNumber;
 
     @JsonProperty("adres")
     @Schema(description = "주소", example = "경기도 수원시 영통구 삼성로 129 (매탄동)")
