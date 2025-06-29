@@ -45,14 +45,14 @@ public class DartCorpCode {
     @Column(name = "corp_name", nullable = false)
     private String corpName; // 정식회사명
 
+    @Column(name = "corp_eng_name", nullable = false)
+    private String corpEngName; // 영문 회사명
+
     @Column(name = "stock_code", length = 6)
     private String stockCode; // 종목코드 (상장사만 존재)
 
     @Column(name = "modify_date", nullable = false)
     private String modifyDate; // 최종변경일자 (YYYYMMDD)
-
-    @Column(name = "corp_cls", length = 1) // Y: 유가, K: 코스닥, N: 코넥스, E: 기타
-    private String corpCls;
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;

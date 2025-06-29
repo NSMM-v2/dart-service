@@ -174,10 +174,14 @@ public class KafkaConsumerService {
             } else {
                 // DART API에서 정보를 가져오지 못한 경우, 기본 프로필 생성
                 log.info("DART API에서 정보를 가져오지 못해 기본 회사 프로필 생성: corpCode={}", corpCode);
+
+                // 기본 회사명 설정
+                String companyName = "정보 없음"; // 기본값
+
                 LocalDateTime now = LocalDateTime.now();
                 CompanyProfile defaultProfile = CompanyProfile.builder()
                         .corpCode(corpCode)
-                        .corpName("기본 회사명_" + corpCode) // 기본 회사명 (필수 필드)
+                        .corpName(companyName) // 기본 회사명 "정보 없음"
                         .createdAt(now)
                         .updatedAt(now)
                         .build();
@@ -202,13 +206,18 @@ public class KafkaConsumerService {
         } else {
             companyProfile = createCompanyProfile(profileResponse);
         }
-        return companyProfileRepository.save(companyProfile);
+
+        // CompanyProfile 저장
+        CompanyProfile savedProfile = companyProfileRepository.save(companyProfile);
+
+        return savedProfile;
     }
 
     private void updateCompanyProfile(CompanyProfile companyProfile, CompanyProfileResponse profileResponse) {
         companyProfile.setCorpName(profileResponse.getCorpName());
         companyProfile.setCorpNameEng(profileResponse.getCorpNameEng());
         companyProfile.setStockCode(profileResponse.getStockCode());
+        companyProfile.setStockName(profileResponse.getStockName()); // 종목명 추가
         companyProfile.setCeoName(profileResponse.getCeoName());
         companyProfile.setCorpClass(profileResponse.getCorpClass());
         companyProfile.setBusinessNumber(profileResponse.getBusinessNumber());
@@ -218,7 +227,7 @@ public class KafkaConsumerService {
         companyProfile.setIrUrl(profileResponse.getIrUrl());
         companyProfile.setPhoneNumber(profileResponse.getPhoneNumber());
         companyProfile.setFaxNumber(profileResponse.getFaxNumber());
-        companyProfile.setIndustry(profileResponse.getIndustry());
+        companyProfile.setIndustryCode(profileResponse.getIndustryCode()); // 업종코드로 변경
         companyProfile.setEstablishmentDate(profileResponse.getEstablishmentDate());
         companyProfile.setAccountingMonth(profileResponse.getAccountingMonth());
         companyProfile.setUpdatedAt(LocalDateTime.now());
@@ -231,6 +240,7 @@ public class KafkaConsumerService {
                 .corpName(profileResponse.getCorpName())
                 .corpNameEng(profileResponse.getCorpNameEng())
                 .stockCode(profileResponse.getStockCode())
+                .stockName(profileResponse.getStockName()) // 종목명 추가
                 .ceoName(profileResponse.getCeoName())
                 .corpClass(profileResponse.getCorpClass())
                 .businessNumber(profileResponse.getBusinessNumber())
@@ -240,7 +250,7 @@ public class KafkaConsumerService {
                 .irUrl(profileResponse.getIrUrl())
                 .phoneNumber(profileResponse.getPhoneNumber())
                 .faxNumber(profileResponse.getFaxNumber())
-                .industry(profileResponse.getIndustry())
+                .industryCode(profileResponse.getIndustryCode()) // 업종코드로 변경
                 .establishmentDate(profileResponse.getEstablishmentDate())
                 .accountingMonth(profileResponse.getAccountingMonth())
                 .createdAt(now)

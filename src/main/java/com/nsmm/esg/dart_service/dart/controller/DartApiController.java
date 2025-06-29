@@ -45,78 +45,70 @@ public class DartApiController {
     @GetMapping("/company/{corpCode}")
     @Operation(summary = "회사 개황 정보 조회", description = "DART 고유번호(corpCode)를 이용하여 특정 회사의 상세 개황 정보를 조회합니다.")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "회사 개황 정보 조회 성공", 
-                     content = @Content(mediaType = "application/json", 
-                                      schema = @Schema(implementation = CompanyProfileResponse.class))),
-        @ApiResponse(responseCode = "400", description = "잘못된 요청 형식 (예: 유효하지 않은 corpCode)"),
-        @ApiResponse(responseCode = "404", description = "해당 회사 정보를 찾을 수 없음"),
-        @ApiResponse(responseCode = "500", description = "서버 내부 오류")
+            @ApiResponse(responseCode = "200", description = "회사 개황 정보 조회 성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = CompanyProfileResponse.class))),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청 형식 (예: 유효하지 않은 corpCode)"),
+            @ApiResponse(responseCode = "404", description = "해당 회사 정보를 찾을 수 없음"),
+            @ApiResponse(responseCode = "500", description = "서버 내부 오류")
     })
     public Mono<ResponseEntity<CompanyProfileResponse>> getCompanyProfile(
-            @Parameter(description = "조회할 회사의 DART 고유번호 (8자리 숫자)", required = true, example = "00126380") 
-            @PathVariable String corpCode) {
+            @Parameter(description = "조회할 회사의 DART 고유번호 (8자리 숫자)", required = true, example = "00126380") @PathVariable String corpCode) {
 
         log.info("회사 정보 조회 API 요청 - 회사 코드: {}", corpCode);
         return dartApiService.getCompanyProfile(corpCode)
-            .map(ResponseEntity::ok)
-            .doOnError(e -> log.error("회사 정보 조회 중 오류 발생: {}", e.getMessage(), e));
+                .map(ResponseEntity::ok)
+                .doOnError(e -> log.error("회사 정보 조회 중 오류 발생: {}", e.getMessage(), e));
     }
 
     @GetMapping("/disclosures")
     @Operation(summary = "공시 정보 검색", description = "DART 고유번호(corpCode)와 기간(시작일, 종료일)을 기준으로 공시 정보를 검색합니다.")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "공시 정보 검색 성공",
-                     content = @Content(mediaType = "application/json",
-                                      schema = @Schema(implementation = DisclosureSearchResponse.class))),
-        @ApiResponse(responseCode = "400", description = "잘못된 요청 형식 (예: 날짜 형식 오류)"),
-        @ApiResponse(responseCode = "404", description = "해당 조건의 공시 정보를 찾을 수 없음"),
-        @ApiResponse(responseCode = "500", description = "서버 내부 오류")
+            @ApiResponse(responseCode = "200", description = "공시 정보 검색 성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = DisclosureSearchResponse.class))),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청 형식 (예: 날짜 형식 오류)"),
+            @ApiResponse(responseCode = "404", description = "해당 조건의 공시 정보를 찾을 수 없음"),
+            @ApiResponse(responseCode = "500", description = "서버 내부 오류")
     })
     public Mono<ResponseEntity<DisclosureSearchResponse>> searchDisclosures(
-            @Parameter(description = "조회할 회사의 DART 고유번호 (8자리 숫자)", required = true, example = "00126380") 
-            @RequestParam String corpCode,
+            @Parameter(description = "조회할 회사의 DART 고유번호 (8자리 숫자)", required = true, example = "00126380") @RequestParam String corpCode,
 
-            @Parameter(description = "검색 시작일 (YYYYMMDD 형식)", required = true, example = "20230101") 
-            @RequestParam String startDate,
+            @Parameter(description = "검색 시작일 (YYYYMMDD 형식)", required = true, example = "20230101") @RequestParam String startDate,
 
-            @Parameter(description = "검색 종료일 (YYYYMMDD 형식)", required = true, example = "20231231") 
-            @RequestParam String endDate) {
+            @Parameter(description = "검색 종료일 (YYYYMMDD 형식)", required = true, example = "20231231") @RequestParam String endDate) {
 
         log.info("공시 정보 검색 API 요청 - 회사 코드: {}, 기간: {} ~ {}", corpCode, startDate, endDate);
         return dartApiService.searchDisclosures(corpCode, startDate, endDate)
-            .map(ResponseEntity::ok)
-            .doOnError(e -> log.error("공시 정보 검색 중 오류 발생: {}", e.getMessage(), e));
+                .map(ResponseEntity::ok)
+                .doOnError(e -> log.error("공시 정보 검색 중 오류 발생: {}", e.getMessage(), e));
     }
 
     @PostMapping("/corp-codes/sync")
     @Operation(summary = "DART 기업 코드 동기화", description = "DART API로부터 모든 기업 코드를 다운로드하여 로컬 데이터베이스와 동기화합니다. 이 작업은 비동기로 처리됩니다.")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "202", description = "기업 코드 동기화 작업 시작됨 (비동기 처리)"),
-        @ApiResponse(responseCode = "500", description = "동기화 작업 시작 중 오류 발생")
+            @ApiResponse(responseCode = "202", description = "기업 코드 동기화 작업 시작됨 (비동기 처리)"),
+            @ApiResponse(responseCode = "500", description = "동기화 작업 시작 중 오류 발생")
     })
     public ResponseEntity<Void> syncCorpCodes() {
         log.info("DART 기업 코드 동기화 요청 수신");
         dartApiService.fetchAndStoreCorpCodes().subscribe(
-            null, // onNext (결과 무시)
-            error -> log.error("기업 코드 동기화 중 비동기 오류 발생", error),
-            () -> log.info("기업 코드 동기화 작업 완료 (비동기)")
-        );
+                null, // onNext (결과 무시)
+                error -> log.error("기업 코드 동기화 중 비동기 오류 발생", error),
+                () -> log.info("기업 코드 동기화 작업 완료 (비동기)"));
         // 실제 작업은 비동기로 수행되므로 즉시 202 Accepted 반환
-        return ResponseEntity.accepted().build(); 
+        return ResponseEntity.accepted().build();
     }
 
     @GetMapping("/corp-codes")
     @Operation(summary = "저장된 DART 기업 코드 목록 조회", description = "로컬 데이터베이스에 저장된 DART 기업 코드 목록을 페이지네이션 및 필터링하여 조회합니다.")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "기업 코드 목록 조회 성공",
-                     content = @Content(mediaType = "application/json",
-                                      schema = @Schema(implementation = Page.class))), // 실제로는 Page<DartCorpCode>이지만, Swagger 표현 간소화
-        @ApiResponse(responseCode = "400", description = "잘못된 요청 파라미터"),
-        @ApiResponse(responseCode = "500", description = "서버 내부 오류")
+            @ApiResponse(responseCode = "200", description = "기업 코드 목록 조회 성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = Page.class))), // 실제로는
+                                                                                                                                                                                   // Page<DartCorpCode>이지만,
+                                                                                                                                                                                   // Swagger
+                                                                                                                                                                                   // 표현
+                                                                                                                                                                                   // 간소화
+            @ApiResponse(responseCode = "400", description = "잘못된 요청 파라미터"),
+            @ApiResponse(responseCode = "500", description = "서버 내부 오류")
     })
     public ResponseEntity<Page<DartCorpCode>> getAllCorpCodes(
-            @Parameter(description = "기업 코드 조회 조건 DTO", schema = @Schema(implementation = CorpCodeQueryDto.class))
-            CorpCodeQueryDto queryDto) {
+            @Parameter(description = "기업 코드 조회 조건 DTO", schema = @Schema(implementation = CorpCodeQueryDto.class)) CorpCodeQueryDto queryDto) {
         log.info("저장된 DART 기업 코드 목록 조회 요청: {}", queryDto);
         Page<DartCorpCode> corpCodes = dartApiService.getAllCorpCodes(queryDto);
         return ResponseEntity.ok(corpCodes);
@@ -125,52 +117,43 @@ public class DartApiController {
     @GetMapping("/corp-codes/{corpCode}")
     @Operation(summary = "특정 DART 기업 코드 조회 (고유번호)", description = "DART 고유번호(corp_code)를 사용하여 로컬 데이터베이스에 저장된 특정 DART 기업 코드를 조회합니다.")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "기업 코드 조회 성공",
-                     content = @Content(mediaType = "application/json",
-                                      schema = @Schema(implementation = DartCorpCode.class))),
-        @ApiResponse(responseCode = "404", description = "해당 고유번호의 기업 코드를 찾을 수 없음"),
-        @ApiResponse(responseCode = "500", description = "서버 내부 오류")
+            @ApiResponse(responseCode = "200", description = "기업 코드 조회 성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = DartCorpCode.class))),
+            @ApiResponse(responseCode = "404", description = "해당 고유번호의 기업 코드를 찾을 수 없음"),
+            @ApiResponse(responseCode = "500", description = "서버 내부 오류")
     })
     public ResponseEntity<DartCorpCode> findCorpCodeByCorpCode(
-            @Parameter(description = "조회할 DART 고유번호 (8자리 숫자)", required = true, example = "00126380") 
-            @PathVariable String corpCode) {
+            @Parameter(description = "조회할 DART 고유번호 (8자리 숫자)", required = true, example = "00126380") @PathVariable String corpCode) {
         log.info("DART 기업 코드 조회 (고유번호): {}", corpCode);
         Optional<DartCorpCode> corpCodeOpt = dartApiService.findCorpCodeByCorpCode(corpCode);
         return corpCodeOpt.map(ResponseEntity::ok)
-                          .orElseGet(() -> ResponseEntity.notFound().build());
+                .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     @GetMapping("/corp-codes/stock/{stockCode}")
     @Operation(summary = "특정 DART 기업 코드 조회 (종목코드)", description = "주식 종목코드(stock_code)를 사용하여 로컬 데이터베이스에 저장된 특정 DART 기업 코드를 조회합니다. (상장사인 경우)")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "기업 코드 조회 성공",
-                     content = @Content(mediaType = "application/json",
-                                      schema = @Schema(implementation = DartCorpCode.class))),
-        @ApiResponse(responseCode = "404", description = "해당 종목코드의 기업 코드를 찾을 수 없음"),
-        @ApiResponse(responseCode = "500", description = "서버 내부 오류")
+            @ApiResponse(responseCode = "200", description = "기업 코드 조회 성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = DartCorpCode.class))),
+            @ApiResponse(responseCode = "404", description = "해당 종목코드의 기업 코드를 찾을 수 없음"),
+            @ApiResponse(responseCode = "500", description = "서버 내부 오류")
     })
     public ResponseEntity<DartCorpCode> findCorpCodeByStockCode(
-            @Parameter(description = "조회할 주식 종목 코드 (6자리 숫자 또는 문자 조합)", required = true, example = "005930") 
-            @PathVariable String stockCode) {
+            @Parameter(description = "조회할 주식 종목 코드 (6자리 숫자 또는 문자 조합)", required = true, example = "005930") @PathVariable String stockCode) {
         log.info("DART 기업 코드 조회 (종목코드): {}", stockCode);
         Optional<DartCorpCode> corpCodeOpt = dartApiService.findCorpCodeByStockCode(stockCode);
         return corpCodeOpt.map(ResponseEntity::ok)
-                          .orElseGet(() -> ResponseEntity.notFound().build());
+                .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     @GetMapping("/corp-codes/search")
     @Operation(summary = "회사명으로 DART 기업 코드 검색", description = "회사명을 기준으로 로컬 데이터베이스에 저장된 DART 기업 코드를 검색합니다. (부분 일치)")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "기업 코드 검색 성공",
-                     content = @Content(mediaType = "application/json",
-                                      schema = @Schema(type = "array", implementation = DartCorpCode.class))),
-        @ApiResponse(responseCode = "500", description = "서버 내부 오류")
+            @ApiResponse(responseCode = "200", description = "기업 코드 검색 성공", content = @Content(mediaType = "application/json", schema = @Schema(type = "array", implementation = DartCorpCode.class))),
+            @ApiResponse(responseCode = "500", description = "서버 내부 오류")
     })
     public ResponseEntity<List<DartCorpCode>> searchCorpCodesByName(
-            @Parameter(description = "검색할 회사명 (부분 일치 가능)", required = true, example = "삼성전자") 
-            @RequestParam String corpName) {
+            @Parameter(description = "검색할 회사명 (부분 일치 가능)", required = true, example = "삼성전자") @RequestParam String corpName) {
         log.info("회사명으로 DART 기업 코드 검색: {}", corpName);
         List<DartCorpCode> corpCodes = dartApiService.searchCorpCodesByName(corpName);
         return ResponseEntity.ok(corpCodes);
     }
-} 
+}

@@ -66,12 +66,12 @@ public class DartApiService {
         if (count == 0) {
             log.info("데이터베이스에 기업 코드가 없습니다. 초기 동기화를 시도합니다...");
             fetchAndStoreCorpCodes()
-                .doOnError(error -> log.error("초기 기업 코드 동기화 중 오류 발생", error))
-                .subscribe(
-                    null, // onNext (결과 무시)
-                    error -> {}, // onError는 doOnError에서 이미 처리
-                    () -> log.info("초기 기업 코드 동기화 시도 완료.")
-                );
+                    .doOnError(error -> log.error("초기 기업 코드 동기화 중 오류 발생", error))
+                    .subscribe(
+                            null, // onNext (결과 무시)
+                            error -> {
+                            }, // onError는 doOnError에서 이미 처리
+                            () -> log.info("초기 기업 코드 동기화 시도 완료."));
         }
     }
 
@@ -81,12 +81,12 @@ public class DartApiService {
     public void scheduledSyncCorpCodes() {
         log.info("스케줄에 따른 기업 코드 동기화 시작...");
         fetchAndStoreCorpCodes()
-            .doOnError(error -> log.error("스케줄된 기업 코드 동기화 중 오류 발생", error))
-            .subscribe(
-                null,
-                error -> {},
-                () -> log.info("스케줄된 기업 코드 동기화 완료.")
-            );
+                .doOnError(error -> log.error("스케줄된 기업 코드 동기화 중 오류 발생", error))
+                .subscribe(
+                        null,
+                        error -> {
+                        },
+                        () -> log.info("스케줄된 기업 코드 동기화 완료."));
     }
 
     /**
@@ -113,7 +113,6 @@ public class DartApiService {
                 .then();
     }
 
-
     /**
      * XML 파싱 결과를 처리하여 기업 코드를 데이터베이스에 저장합니다.
      *
@@ -129,14 +128,14 @@ public class DartApiService {
         // 상태가 null이지만 목록이 있는 경우는 정상으로 간주하고 계속 진행
         if (status != null && !"000".equals(status)) {
             log.error("DART API 오류 응답: status={}, message={}", status, message);
-            return Mono.error(new ResponseStatusException(HttpStatus.BAD_GATEWAY, 
-                "DART API error: " + message));
+            return Mono.error(new ResponseStatusException(HttpStatus.BAD_GATEWAY,
+                    "DART API error: " + message));
         }
 
         if (corpList == null || corpList.isEmpty()) {
             log.warn("DART API에서 받은 기업 코드 목록이 비어있습니다.");
-            return Mono.error(new ResponseStatusException(HttpStatus.BAD_GATEWAY, 
-                "DART API returned empty corp code list"));
+            return Mono.error(new ResponseStatusException(HttpStatus.BAD_GATEWAY,
+                    "DART API returned empty corp code list"));
         }
 
         log.info("DART API에서 {}개의 기업 코드를 받았습니다. 데이터베이스에 저장합니다...", corpList.size());
@@ -154,6 +153,7 @@ public class DartApiService {
 
                     dartCorpCode.setCorpCode(corpItem.getCorpCode());
                     dartCorpCode.setCorpName(corpItem.getCorpName());
+                    dartCorpCode.setCorpEngName(corpItem.getCorpEngName()); // 영문 회사명 추가
                     dartCorpCode.setStockCode(corpItem.getStockCode());
                     dartCorpCode.setModifyDate(corpItem.getModifyDate());
                 } else if (item instanceof DartCorpCodeRootXmlDto.CorpCodeItem corpItem) {
@@ -161,6 +161,7 @@ public class DartApiService {
 
                     dartCorpCode.setCorpCode(corpItem.getCorpCode());
                     dartCorpCode.setCorpName(corpItem.getCorpName());
+                    dartCorpCode.setCorpEngName(corpItem.getCorpEngName()); // 영문 회사명 추가
                     dartCorpCode.setStockCode(corpItem.getStockCode());
                     dartCorpCode.setModifyDate(corpItem.getModifyDate());
                 } else {
@@ -179,8 +180,8 @@ public class DartApiService {
 
         if (dartCorpCodes.isEmpty()) {
             log.error("처리 가능한 기업 코드가 없습니다.");
-            return Mono.error(new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, 
-                "No valid corp codes to save"));
+            return Mono.error(new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                    "No valid corp codes to save"));
         }
 
         // 기존 데이터 삭제 후 새 데이터 저장
@@ -194,20 +195,21 @@ public class DartApiService {
     @Cacheable(value = CORP_CODE_CACHE_NAME, key = "#queryDto.toString()")
     public Page<DartCorpCode> getAllCorpCodes(CorpCodeQueryDto queryDto) {
         log.info("저장된 기업 코드 조회 요청: {}", queryDto);
-        
+
         // 페이지 번호 검증 및 보정
         int validPage = Math.max(0, queryDto.getPage());
         int validPageSize = Math.max(1, Math.min(100, queryDto.getPageSize()));
-        
-        log.debug("DART 기업 코드 조회 - 원본: page={}, pageSize={} -> 보정: page={}, pageSize={}", 
+
+        log.debug("DART 기업 코드 조회 - 원본: page={}, pageSize={} -> 보정: page={}, pageSize={}",
                 queryDto.getPage(), queryDto.getPageSize(), validPage, validPageSize);
-        
+
         Pageable pageable = PageRequest.of(validPage, validPageSize);
 
         Specification<DartCorpCode> spec = (root, query, criteriaBuilder) -> {
             List<jakarta.persistence.criteria.Predicate> predicates = new ArrayList<>();
             if (StringUtils.hasText(queryDto.getCorpNameFilter())) {
-                predicates.add(criteriaBuilder.like(criteriaBuilder.lower(root.get("corpName")), "%" + queryDto.getCorpNameFilter().toLowerCase() + "%"));
+                predicates.add(criteriaBuilder.like(criteriaBuilder.lower(root.get("corpName")),
+                        "%" + queryDto.getCorpNameFilter().toLowerCase() + "%"));
             }
             if (queryDto.isListedOnly()) {
                 predicates.add(criteriaBuilder.isNotNull(root.get("stockCode")));
@@ -251,31 +253,31 @@ public class DartApiService {
 
         // 1. 캐시에서 먼저 조회 (동기 호출을 Reactive 스트림으로 감싸기)
         return Mono.fromCallable(() -> cacheService.get(cacheName, corpCode))
-            .flatMap(cachedValue -> {
-                if (cachedValue instanceof CompanyProfileResponse) {
-                    log.info("캐시 히트: key={}", corpCode);
-                    return Mono.just((CompanyProfileResponse) cachedValue);
-                }
-                log.info("캐시에 '{}' 키에 대한 회사 정보 없음 또는 타입 불일치. API 직접 호출: {}", corpCode, corpCode);
-                // 2. 캐시에 없으면 API 호출
-                return webClientService.getCompanyProfile(corpCode)
-                    .doOnSuccess(profile -> {
-                        if (profile != null) {
-                            // 3. API 호출 성공 시 캐시에 저장 (동기 호출)
-                            cacheService.put(cacheName, corpCode, profile);
-                            log.info("API 응답을 캐시에 저장: key={}, value={}", corpCode, profile);
-                        }
-                    });
-            })
-            .doOnError(error -> log.error("회사 정보 조회 중 오류 발생: corpCode={}", corpCode, error));
+                .flatMap(cachedValue -> {
+                    if (cachedValue instanceof CompanyProfileResponse) {
+                        log.info("캐시 히트: key={}", corpCode);
+                        return Mono.just((CompanyProfileResponse) cachedValue);
+                    }
+                    log.info("캐시에 '{}' 키에 대한 회사 정보 없음 또는 타입 불일치. API 직접 호출: {}", corpCode, corpCode);
+                    // 2. 캐시에 없으면 API 호출
+                    return webClientService.getCompanyProfile(corpCode)
+                            .doOnSuccess(profile -> {
+                                if (profile != null) {
+                                    // 3. API 호출 성공 시 캐시에 저장 (동기 호출)
+                                    cacheService.put(cacheName, corpCode, profile);
+                                    log.info("API 응답을 캐시에 저장: key={}, value={}", corpCode, profile);
+                                }
+                            });
+                })
+                .doOnError(error -> log.error("회사 정보 조회 중 오류 발생: corpCode={}", corpCode, error));
     }
 
     /**
      * DART API에서 공시 정보를 검색합니다.
      *
-     * @param corpCode 회사 코드
+     * @param corpCode  회사 코드
      * @param startDate 검색 시작일(YYYYMMDD)
-     * @param endDate 검색 종료일(YYYYMMDD)
+     * @param endDate   검색 종료일(YYYYMMDD)
      * @return 공시 검색 결과 응답 Mono
      */
     @Cacheable(value = "disclosureSearch", key = "#corpCode + '_' + #startDate + '_' + #endDate")
@@ -285,43 +287,18 @@ public class DartApiService {
     }
 
     /**
-     * CacheService를 사용하여 프로그래밍 방식으로 공시 정보를 검색합니다.
-     * 이 메서드는 @Cacheable 어노테이션 대신 CacheService를 직접 사용하는 예시입니다.
-     *
-     * @param corpCode 회사 코드
-     * @param startDate 검색 시작일(YYYYMMDD)
-     * @param endDate 검색 종료일(YYYYMMDD)
-     * @return 공시 검색 결과 응답 Mono
-     */
-    public Mono<DisclosureSearchResponse> searchDisclosuresProgrammatically(String corpCode, String startDate, String endDate) {
-        log.info("프로그래밍 방식 캐시를 사용한 공시 검색: {}, {} ~ {}", corpCode, startDate, endDate);
-
-        String cacheKey = corpCode + "_" + startDate + "_" + endDate;
-
-        // CacheService는 Mono를 직접 지원하지 않으므로 Mono.defer를 사용하여 캐싱 로직을 래핑
-        return Mono.defer(() -> {
-            DisclosureSearchResponse cachedResponse = cacheService.get("disclosureSearch", cacheKey);
-            if (cachedResponse != null) {
-                return Mono.just(cachedResponse);
-            }
-
-            return webClientService.searchDisclosures(corpCode, startDate, endDate)
-                .doOnNext(response -> cacheService.put("disclosureSearch", cacheKey, response));
-        });
-    }
-
-    /**
      * DART API에서 단일 회사 전체 재무제표를 조회합니다.
      *
-     * @param corpCode    고유번호 (8자리)
-     * @param bsnsYear    사업연도 (4자리)
-     * @param reprtCode   보고서 코드 (1분기: 11013, 반기: 11012, 3분기: 11014, 사업보고서: 11011)
-     * @param fsDiv       개별/연결 구분 (OFS: 재무제표, CFS: 연결재무제표)
+     * @param corpCode  고유번호 (8자리)
+     * @param bsnsYear  사업연도 (4자리)
+     * @param reprtCode 보고서 코드 (1분기: 11013, 반기: 11012, 3분기: 11014, 사업보고서: 11011)
+     * @param fsDiv     개별/연결 구분 (OFS: 재무제표, CFS: 연결재무제표)
      * @return 재무제표 정보 응답 Mono
      */
     @Cacheable(value = "financialStatements", key = "#corpCode + '_' + #bsnsYear + '_' + #reprtCode + '_' + #fsDiv")
-    public Mono<FinancialStatementResponseDto> getFinancialStatement(String corpCode, String bsnsYear, String reprtCode, String fsDiv) {
-        log.info("단일 회사 전체 재무제표 조회 API 호출: corpCode={}, bsnsYear={}, reprtCode={}, fsDiv={}", 
+    public Mono<FinancialStatementResponseDto> getFinancialStatement(String corpCode, String bsnsYear, String reprtCode,
+            String fsDiv) {
+        log.info("단일 회사 전체 재무제표 조회 API 호출: corpCode={}, bsnsYear={}, reprtCode={}, fsDiv={}",
                 corpCode, bsnsYear, reprtCode, fsDiv);
         return webClientService.getFinancialStatementApi(corpCode, bsnsYear, reprtCode, fsDiv);
     }

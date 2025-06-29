@@ -6,6 +6,7 @@
  *              - corpName: 회사의 정식 명칭
  *              - corpNameEng: 회사의 영문 명칭
  *              - stockCode: 주식 시장에서 사용하는 종목 코드 (6자리, 상장된 경우)
+ *              - stockName: 종목명 (예: "삼성전자")
  *              - ceoName: 대표이사 이름
  *              - corpClass: 시장 구분 (Y: 유가증권, K: 코스닥, N: 코넥스, E: 기타)
  *              - businessNumber: 사업자 등록번호 (하이픈 포함 가능)
@@ -15,7 +16,8 @@
  *              - irUrl: IR(Investor Relations) 페이지 URL
  *              - phoneNumber: 회사 대표 전화번호
  *              - faxNumber: 회사 대표 팩스번호
- *              - industry: 업종명
+ *              - industry: 업종명 (텍스트)
+ *              - industryCode: 업종 코드 (숫자, 예: "264")
  *              - establishmentDate: 설립일 (YYYYMMDD 형식)
  *              - accountingMonth: 결산월 (MM 형식)
  *              - createdAt: 레코드 생성 시간
@@ -62,6 +64,9 @@ public class CompanyProfile {
     @Column(name = "stock_code", length = 6)
     private String stockCode; // 종목 코드
 
+    @Column(name = "stock_name", length = 100)
+    private String stockName; // 종목명
+
     @Column(name = "ceo_name")
     private String ceoName; // 대표이사명
 
@@ -90,7 +95,10 @@ public class CompanyProfile {
     private String faxNumber; // 팩스번호
 
     @Column(name = "industry", length = 200)
-    private String industry; // 업종
+    private String industry; // 업종명 (텍스트)
+
+    @Column(name = "industry_code", length = 10)
+    private String industryCode; // 업종 코드 (숫자)
 
     @Column(name = "establishment_date", length = 8)
     private String establishmentDate; // 설립일 (YYYYMMDD)
