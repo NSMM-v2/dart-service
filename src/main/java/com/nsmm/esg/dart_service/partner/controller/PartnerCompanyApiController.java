@@ -51,7 +51,6 @@ public class PartnerCompanyApiController {
 
         private final PartnerCompanyApiService partnerCompanyApiService;
         private final PartnerFinancialRiskService partnerFinancialRiskService;
-        private final KafkaProducerService kafkaProducerService;
 
         @GetMapping("/companies/{companyId}")
         @Operation(summary = "파트너사 외부 시스템 회사 정보 조회", description = "파트너사 외부 시스템 API를 통해 특정 회사 정보를 조회합니다. (주의: 현재 서비스의 파트너사 DB와는 별개)")

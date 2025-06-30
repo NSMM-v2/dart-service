@@ -14,6 +14,9 @@ package com.nsmm.esg.dart_service.database.entity;
 
 import java.time.LocalDateTime;
 
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
@@ -54,9 +57,11 @@ public class DartCorpCode {
     @Column(name = "modify_date", nullable = false)
     private String modifyDate; // 최종변경일자 (YYYYMMDD)
 
+    @CreationTimestamp
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
+    @UpdateTimestamp
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 }

@@ -44,13 +44,11 @@ import reactor.core.publisher.Mono;
 @Slf4j
 public class KafkaConsumerService {
 
-    private final ObjectMapper objectMapper;
     private final DartApiService dartApiService;
     private final PartnerCompanyRepository partnerCompanyRepository;
     private final CompanyProfileRepository companyProfileRepository;
     private final DisclosureRepository disclosureRepository;
     private final FinancialStatementDataRepository financialStatementDataRepository;
-    private final KafkaProducerService kafkaProducerService;
     private final DartCorpCodeRepository dartCorpCodeRepository;
 
     @Value("${dart.api.key}")

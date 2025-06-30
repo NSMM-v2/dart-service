@@ -6,7 +6,6 @@
  */
 package com.nsmm.esg.dart_service.dart.service;
 
-import com.nsmm.esg.dart_service.cache.service.CacheService;
 import com.nsmm.esg.dart_service.dart.dto.CompanyProfileResponse;
 import com.nsmm.esg.dart_service.dart.dto.CorpCodeQueryDto;
 import com.nsmm.esg.dart_service.dart.dto.DisclosureSearchResponse;
@@ -44,7 +43,6 @@ import java.util.Optional;
 public class DartApiService {
 
     private final DartCorpCodeRepository dartCorpCodeRepository;
-    private final CacheService cacheService;
     private final WebClientService webClientService;
     private final XmlParserService xmlParserService;
     private final ZipExtractorService zipExtractorService;
