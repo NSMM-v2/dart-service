@@ -29,6 +29,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.Index;
 
 import lombok.Getter;
 import lombok.Setter;
@@ -39,7 +40,11 @@ import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 
 @Entity
-@Table(name = "disclosures")
+@Table(name = "disclosures", indexes = {
+        @Index(name = "idx_disclosure_corp_code", columnList = "corp_code"),
+        @Index(name = "idx_disclosure_company_profile", columnList = "company_profile_id"),
+        @Index(name = "idx_disclosure_receipt_date", columnList = "receipt_date")
+})
 @Getter
 @Setter
 @ToString(exclude = { "companyProfile" })
@@ -54,9 +59,20 @@ public class Disclosure {
     @Column(name = "receipt_no")
     private String receiptNo; // 공시 접수번호
 
+    // ========================================================================
+    // 회사 정보 연관관계
+    // ========================================================================
+
+    @Column(name = "corp_code", length = 8, nullable = false)
+    private String corpCode; // DART 기업 코드 (조회 성능을 위해 별도 보관)
+
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "corp_code", nullable = false)
+    @JoinColumn(name = "company_profile_id")
     private CompanyProfile companyProfile; // 공시 회사 정보
+
+    // ========================================================================
+    // 공시 기본 정보
+    // ========================================================================
 
     @Column(name = "corp_name", nullable = false)
     private String corpName; // 회사명

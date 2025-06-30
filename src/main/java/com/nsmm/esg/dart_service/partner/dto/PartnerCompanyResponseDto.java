@@ -2,6 +2,7 @@
  * @file PartnerCompanyResponseDto.java
  * @description 파트너사 조회 시 반환되는 응답 DTO입니다.
  *              PartnerCompany 엔티티의 정보와 연관된 CompanyProfile의 회사 상세 정보를 포함합니다.
+ *              각 파트너사는 본사(HEADQUARTERS) 또는 협력사(PARTNER)에 의해 소유됩니다.
  */
 package com.nsmm.esg.dart_service.partner.dto;
 
@@ -20,7 +21,7 @@ import com.nsmm.esg.dart_service.partner.model.PartnerCompanyStatus;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Schema(description = "파트너사 조회 시 반환되는 응답 DTO. CompanyProfile의 회사 정보와 계약 정보를 포함합니다.")
+@Schema(description = "파트너사 조회 시 반환되는 응답 DTO. CompanyProfile의 회사 정보와 소유자 정보를 포함합니다.")
 public class PartnerCompanyResponseDto {
 
     // ====================================================================
@@ -39,9 +40,6 @@ public class PartnerCompanyResponseDto {
     @Schema(description = "계약 시작일", example = "2023-01-01")
     private LocalDate contractStartDate;
 
-    @Schema(description = "계약 종료일", example = "2024-12-31")
-    private LocalDate contractEndDate;
-
     @Schema(description = "파트너사 등록 일시", example = "2023-01-01T10:00:00")
     private LocalDateTime createdAt;
 
@@ -49,29 +47,17 @@ public class PartnerCompanyResponseDto {
     private LocalDateTime updatedAt;
 
     // ====================================================================
-    // 권한 및 계층형 구조 정보
+    // 소유자 정보
     // ====================================================================
 
-    @Schema(description = "본사 ID", example = "1")
+    @Schema(description = "본사 ID (본사가 등록한 경우)", example = "1")
     private Long headquartersId;
 
-    @Schema(description = "등록한 협력사 ID (협력사가 등록한 경우)", example = "2")
+    @Schema(description = "협력사 ID (협력사가 등록한 경우)", example = "2")
     private Long partnerId;
 
-    @Schema(description = "본사 계정 번호", example = "HQ001")
-    private String hqAccountNumber;
-
-    @Schema(description = "계층적 ID", example = "L1-001")
-    private String hierarchicalId;
-
-    @Schema(description = "협력사 계층 레벨 (1차=1, 2차=2, ...)", example = "1")
-    private Integer level;
-
-    @Schema(description = "트리 경로", example = "/HQ001/L1-001")
-    private String treePath;
-
-    @Schema(description = "상위 협력사 ID (있는 경우)", example = "parent-uuid-123")
-    private String parentPartnerId;
+    @Schema(description = "사용자 유형 (HEADQUARTERS 또는 PARTNER)", example = "HEADQUARTERS")
+    private String userType;
 
     // ====================================================================
     // CompanyProfile에서 가져오는 회사 정보
@@ -113,11 +99,8 @@ public class PartnerCompanyResponseDto {
     @Schema(description = "전화번호", example = "02-3456-7890")
     private String phoneNumber;
 
-    @Schema(description = "팩스번호", example = "02-3456-7891")
+    @Schema(description = "팩스번호", example = "031-200-7538")
     private String faxNumber;
-
-    @Schema(description = "업종명", example = "전기업")
-    private String industry;
 
     @Schema(description = "업종 코드", example = "264")
     private String industryCode;

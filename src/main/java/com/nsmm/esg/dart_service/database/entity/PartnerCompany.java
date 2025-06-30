@@ -1,17 +1,16 @@
 /**
- * PartnerCompany - 협력사 관리 엔티티 (계층형 구조 + DART 연동)
+ * PartnerCompany - 협력사 관리 엔티티 (최소한 버전)
  * 
- * 핵심 개선사항:
- * - 회사 정보는 CompanyProfile과 연관관계로 처리
- * - 중복 데이터 제거하고 DART API 데이터 활용
- * - 계층형 구조로 본사-협력사 관계 관리
- * - 게이트웨이 헤더 기반 권한 제어 (X-HEADQUARTERS-ID, X-PARTNER-ID)
+ * 설계 원칙:
+ * - 계층형 구조 제거 (Auth Service에서 관리)
+ * - 단순한 회사-소유자 매핑만 유지
+ * - CompanyProfile 참조로 회사 정보 활용
  * 
- * 데이터 소스:
- * - CompanyProfile: 회사 기본 정보 (회사명, 주소, 대표자, 업종 등)
- * - DartCorpCode: 기업 코드 및 종목 코드
- * - FinancialStatementData: 재무 데이터 (필요시 조회)
- * - Disclosure: 공시 정보 (필요시 조회)
+ * 주요 변경사항:
+ * - 계층형 관련 컬럼 모두 제거
+ * - contract_end_date 제거
+ * - headquartersId, partnerId 선택적 컬럼 추가
+ * - userType으로 본사/협력사 구분
  */
 package com.nsmm.esg.dart_service.database.entity;
 
@@ -21,8 +20,6 @@ import lombok.*;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
 
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -31,9 +28,9 @@ import org.hibernate.annotations.UpdateTimestamp;
 @Table(name = "partner_companies", indexes = {
         @Index(name = "idx_partner_corp_code", columnList = "corp_code"),
         @Index(name = "idx_partner_headquarters_id", columnList = "headquarters_id"),
-        @Index(name = "idx_partner_parent_id", columnList = "parent_partner_id"),
-        @Index(name = "idx_partner_tree_path", columnList = "tree_path"),
-        @Index(name = "idx_partner_hq_hierarchical", columnList = "hq_account_number,hierarchical_id")
+        @Index(name = "idx_partner_partner_id", columnList = "partner_id"),
+        @Index(name = "idx_partner_company_profile", columnList = "company_profile_id"),
+        @Index(name = "idx_partner_user_type", columnList = "user_type")
 })
 @Getter
 @Setter
@@ -47,58 +44,28 @@ public class PartnerCompany {
     private String id;
 
     // ========================================================================
-    // 회사 정보 연관관계 (DART API 데이터 활용)
+    // 회사 정보 연관관계
     // ========================================================================
 
-    /**
-     * DART 회사 프로필과의 연관관계
-     * 회사 기본 정보는 모두 CompanyProfile에서 조회
-     */
+    @Column(name = "corp_code", length = 8, nullable = false)
+    private String corpCode; // DART 기업 코드
+
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "corp_code", referencedColumnName = "corp_code")
+    @JoinColumn(name = "company_profile_id")
     private CompanyProfile companyProfile;
 
     // ========================================================================
-    // 본사/협력사 구분 및 관계 (게이트웨이 헤더와 매핑)
+    // 소유자 정보 (본사 또는 협력사)
     // ========================================================================
 
-    /**
-     * 본사 ID - auth-service의 Headquarters ID와 매핑
-     * 게이트웨이 헤더: X-HEADQUARTERS-ID
-     */
-    @Column(name = "headquarters_id", nullable = false)
-    private Long headquartersId;
+    @Column(name = "headquarters_id")
+    private Long headquartersId; // 본사가 등록한 경우에만 값 존재
 
-    /**
-     * 협력사 등록한 사용자 ID - auth-service의 Partner ID와 매핑
-     * 게이트웨이 헤더: X-PARTNER-ID (협력사인 경우에만)
-     */
     @Column(name = "partner_id")
-    private Long partnerId; // 협력사인 경우에만 존재, 본사가 등록한 경우 null
+    private Long partnerId; // 협력사가 등록한 경우에만 값 존재
 
-    @Column(name = "hq_account_number", nullable = false, length = 10)
-    private String hqAccountNumber; // 본사 계정 번호 (예: HQ001)
-
-    // ========================================================================
-    // 계층형 구조 필드들 (auth-service Partner와 동일)
-    // ========================================================================
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "parent_partner_id")
-    private PartnerCompany parentPartner; // 상위 협력사
-
-    @OneToMany(mappedBy = "parentPartner", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    @Builder.Default
-    private List<PartnerCompany> childPartners = new ArrayList<>(); // 하위 협력사 목록
-
-    @Column(name = "hierarchical_id", nullable = false, length = 20)
-    private String hierarchicalId; // 계층적 ID (L1-001, L2-001...)
-
-    @Column(name = "level", nullable = false)
-    private Integer level; // 협력사 계층 레벨 (1차=1, 2차=2...)
-
-    @Column(name = "tree_path", nullable = false, length = 500)
-    private String treePath; // 트리 경로 (/{본사ID}/L1-001/L2-001/...)
+    @Column(name = "user_type", nullable = false, length = 20)
+    private String userType; // HEADQUARTERS 또는 PARTNER
 
     // ========================================================================
     // 계약 및 상태 관리
@@ -106,9 +73,6 @@ public class PartnerCompany {
 
     @Column(name = "contract_start_date")
     private LocalDate contractStartDate; // 계약 시작일
-
-    @Column(name = "contract_end_date")
-    private LocalDate contractEndDate; // 계약 종료일
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
@@ -123,4 +87,28 @@ public class PartnerCompany {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
+    // ========================================================================
+    // 편의 메서드
+    // ========================================================================
+
+    /**
+     * 본사가 등록한 협력사인지 확인
+     */
+    public boolean isHeadquartersOwned() {
+        return "HEADQUARTERS".equals(userType) && headquartersId != null;
+    }
+
+    /**
+     * 협력사가 등록한 하위 협력사인지 확인
+     */
+    public boolean isPartnerOwned() {
+        return "PARTNER".equals(userType) && partnerId != null;
+    }
+
+    /**
+     * 소유자 ID 반환 (userType에 따라)
+     */
+    public Long getOwnerId() {
+        return isHeadquartersOwned() ? headquartersId : partnerId;
+    }
 }

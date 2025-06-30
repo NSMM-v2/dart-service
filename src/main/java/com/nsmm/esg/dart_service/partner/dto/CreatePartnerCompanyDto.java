@@ -36,10 +36,6 @@ public class CreatePartnerCompanyDto {
     @Schema(description = "파트너사와의 계약 시작일 (YYYY-MM-DD 형식)", example = "2023-01-01", requiredMode = Schema.RequiredMode.REQUIRED)
     private LocalDate contractStartDate;
 
-    @DateTimeFormat(pattern = "yyyy-MM-dd")
-    @Schema(description = "파트너사와의 계약 종료일 (YYYY-MM-DD 형식, 선택사항)", example = "2024-12-31", nullable = true)
-    private LocalDate contractEndDate;
-
     // ====================================================================
     // 편의 메서드
     // ====================================================================

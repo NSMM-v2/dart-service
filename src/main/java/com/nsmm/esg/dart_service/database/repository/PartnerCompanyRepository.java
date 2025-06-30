@@ -187,20 +187,29 @@ public interface PartnerCompanyRepository extends JpaRepository<PartnerCompany, 
         java.util.List<PartnerCompany> findByPartnerId(Long partnerId);
 
         /**
-         * 계층적 ID로 파트너 회사를 검색합니다.
+         * 본사 ID와 법인등록번호로 파트너 회사를 검색합니다.
          *
-         * @param hierarchicalId 계층적 ID
+         * @param headquartersId 본사 ID
+         * @param corpCode       법인등록번호
          * @return 검색된 파트너 회사 (Optional)
          */
-        Optional<PartnerCompany> findByHierarchicalId(String hierarchicalId);
+        @Query("SELECT p FROM PartnerCompany p JOIN p.companyProfile cp " +
+                        "WHERE p.headquartersId = :headquartersId AND cp.corpCode = :corpCode")
+        Optional<PartnerCompany> findByHeadquartersIdAndCorpCode(
+                        @Param("headquartersId") Long headquartersId,
+                        @Param("corpCode") String corpCode);
 
         /**
-         * 본사 계정 번호와 레벨로 파트너 회사를 검색합니다.
+         * 협력사 ID와 법인등록번호로 파트너 회사를 검색합니다.
          *
-         * @param hqAccountNumber 본사 계정 번호
-         * @param level           협력사 레벨
-         * @return 검색된 파트너 회사 목록
+         * @param partnerId 협력사 ID
+         * @param corpCode  법인등록번호
+         * @return 검색된 파트너 회사 (Optional)
          */
-        java.util.List<PartnerCompany> findByHqAccountNumberAndLevel(String hqAccountNumber, Integer level);
+        @Query("SELECT p FROM PartnerCompany p JOIN p.companyProfile cp " +
+                        "WHERE p.partnerId = :partnerId AND cp.corpCode = :corpCode")
+        Optional<PartnerCompany> findByPartnerIdAndCorpCode(
+                        @Param("partnerId") Long partnerId,
+                        @Param("corpCode") String corpCode);
 
 }

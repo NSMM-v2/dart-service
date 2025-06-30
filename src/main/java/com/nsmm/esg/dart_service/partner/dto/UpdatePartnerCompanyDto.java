@@ -35,10 +35,6 @@ public class UpdatePartnerCompanyDto {
     @Schema(description = "변경할 파트너사와의 계약 시작일 (YYYY-MM-DD 형식)", example = "2024-01-01", nullable = true)
     private LocalDate contractStartDate;
 
-    @DateTimeFormat(pattern = "yyyy-MM-dd")
-    @Schema(description = "변경할 파트너사와의 계약 종료일 (YYYY-MM-DD 형식)", example = "2024-12-31", nullable = true)
-    private LocalDate contractEndDate;
-
     @Schema(description = "변경할 파트너사 상태 (예: ACTIVE, INACTIVE). 상태 변경은 신중해야 합니다.", example = "ACTIVE", nullable = true)
     private PartnerCompanyStatus status;
 
@@ -49,7 +45,7 @@ public class UpdatePartnerCompanyDto {
     // 이 DTO에서 직접 수정할 수 없습니다.
     // 2. corpCode를 변경하면 새로운 CompanyProfile과 연결되어
     // 회사 정보가 자동으로 업데이트됩니다.
-    // 3. 계층형 구조 정보(hierarchicalId, level, treePath 등)는
-    // 별도의 API를 통해 관리됩니다.
+    // 3. 소유자 정보(headquartersId, partnerId)는 등록 시 결정되며
+    // 이후 변경할 수 없습니다.
     // ====================================================================
 }

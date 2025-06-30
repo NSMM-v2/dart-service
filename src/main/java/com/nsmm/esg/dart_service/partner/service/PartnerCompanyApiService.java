@@ -133,7 +133,7 @@ public class PartnerCompanyApiService {
                 createDto.getCorpCode(), headquartersId, partnerId);
 
         // 1. CompanyProfile 존재 여부 확인 또는 생성
-        CompanyProfile companyProfile = getOrCreateCompanyProfile(createDto.getCorpCode());
+        CompanyProfile companyProfile = getOrCreateCompanyProfile(createDto.getCorpCode(), headquartersId, partnerId);
         if (companyProfile == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND,
                     "해당 기업코드의 회사 정보를 찾을 수 없습니다. corpCode: " + createDto.getCorpCode());
@@ -166,14 +166,19 @@ public class PartnerCompanyApiService {
             log.info("INACTIVE 상태의 기존 파트너사 발견 - 복원 처리: {}", companyProfile.getCorpName());
             PartnerCompany existingPartner = inactivePartner.get();
 
+            // 실제 요청자 타입 결정
+            String actualUserType = (partnerId != null) ? "PARTNER" : "HEADQUARTERS";
+            Long actualHeadquartersId = actualUserType.equals("HEADQUARTERS") ? headquartersId : null;
+            Long actualPartnerId = actualUserType.equals("PARTNER") ? partnerId : null;
+
             // 기존 데이터를 새로운 정보로 업데이트하고 ACTIVE로 복원
             existingPartner.setCompanyProfile(companyProfile);
+            existingPartner.setCorpCode(createDto.getCorpCode());
             existingPartner.setContractStartDate(createDto.getContractStartDate());
-            existingPartner.setContractEndDate(createDto.getContractEndDate());
             existingPartner.setStatus(PartnerCompanyStatus.ACTIVE);
-            existingPartner.setHeadquartersId(headquartersId);
-            existingPartner.setPartnerId(partnerId);
-            existingPartner.setHqAccountNumber(hqAccountNumber);
+            existingPartner.setHeadquartersId(actualHeadquartersId);
+            existingPartner.setPartnerId(actualPartnerId);
+            existingPartner.setUserType(actualUserType);
             existingPartner.setUpdatedAt(LocalDateTime.now());
 
             PartnerCompany restoredPartner = partnerCompanyRepository.save(existingPartner);
@@ -188,21 +193,19 @@ public class PartnerCompanyApiService {
         // 4. 새로운 파트너 회사 생성
         String newId = UUID.randomUUID().toString();
 
-        // 계층적 ID 생성 (임시 - 실제로는 부모 관계에 따라 생성해야 함)
-        String hierarchicalId = generateHierarchicalId(hqAccountNumber, 1); // 기본 1차 협력사로 설정
-        String treePath = String.format("/%d/%s", headquartersId, hierarchicalId);
+        // 실제 요청자 타입 결정
+        String actualUserType = (partnerId != null) ? "PARTNER" : "HEADQUARTERS";
+        Long actualHeadquartersId = actualUserType.equals("HEADQUARTERS") ? headquartersId : null;
+        Long actualPartnerId = actualUserType.equals("PARTNER") ? partnerId : null;
 
         PartnerCompany newPartner = PartnerCompany.builder()
                 .id(newId)
+                .corpCode(createDto.getCorpCode())
                 .companyProfile(companyProfile)
-                .headquartersId(headquartersId)
-                .partnerId(partnerId)
-                .hqAccountNumber(hqAccountNumber)
-                .hierarchicalId(hierarchicalId)
-                .level(1) // 기본 1차 협력사
-                .treePath(treePath)
+                .headquartersId(actualHeadquartersId)
+                .partnerId(actualPartnerId)
+                .userType(actualUserType)
                 .contractStartDate(createDto.getContractStartDate())
-                .contractEndDate(createDto.getContractEndDate())
                 .status(PartnerCompanyStatus.ACTIVE)
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
@@ -220,19 +223,34 @@ public class PartnerCompanyApiService {
     /**
      * CompanyProfile을 조회하거나 DartCorpCode에서 생성합니다.
      * 
-     * @param corpCode 기업 코드
+     * @param corpCode       기업 코드
+     * @param headquartersId 본사 ID
+     * @param partnerId      협력사 ID
      * @return CompanyProfile 또는 null
      */
-    private CompanyProfile getOrCreateCompanyProfile(String corpCode) {
-        // 1. 먼저 CompanyProfile에서 조회
-        Optional<CompanyProfile> existingProfile = companyProfileRepository.findById(corpCode);
+    private CompanyProfile getOrCreateCompanyProfile(String corpCode, Long headquartersId, Long partnerId) {
+        // 1. 실제 요청자 타입 결정 (partnerId가 null이 아니면 협력사 요청)
+        String actualUserType = (partnerId != null) ? "PARTNER" : "HEADQUARTERS";
+        Long actualOwnerId = (partnerId != null) ? partnerId : headquartersId;
+
+        log.info("CompanyProfile 조회/생성 - corpCode: {}, actualUserType: {}, actualOwnerId: {}",
+                corpCode, actualUserType, actualOwnerId);
+
+        // 2. 해당 소유자의 CompanyProfile 조회
+        Optional<CompanyProfile> existingProfile;
+        if ("PARTNER".equals(actualUserType)) {
+            existingProfile = companyProfileRepository.findByPartnerIdAndCorpCode(partnerId, corpCode);
+        } else {
+            existingProfile = companyProfileRepository.findByHeadquartersIdAndCorpCode(headquartersId, corpCode);
+        }
+
         if (existingProfile.isPresent()) {
-            log.info("기존 CompanyProfile 발견: corpCode={}, corpName={}",
-                    corpCode, existingProfile.get().getCorpName());
+            log.info("기존 CompanyProfile 발견: corpCode={}, userType={}, ownerId={}, corpName={}",
+                    corpCode, actualUserType, actualOwnerId, existingProfile.get().getCorpName());
             return existingProfile.get();
         }
 
-        // 2. CompanyProfile이 없으면 DartCorpCode에서 조회하여 생성
+        // 3. CompanyProfile이 없으면 DartCorpCode에서 조회하여 생성
         log.info("CompanyProfile이 없음. DartCorpCode에서 조회하여 생성: corpCode={}", corpCode);
 
         Optional<DartCorpCode> dartCorpCodeOpt = dartCorpCodeRepository.findById(corpCode);
@@ -245,40 +263,30 @@ public class PartnerCompanyApiService {
         log.info("DartCorpCode에서 회사 정보 발견: corpCode={}, corpName={}, stockCode={}",
                 corpCode, dartCorpCode.getCorpName(), dartCorpCode.getStockCode());
 
-        // 3. DartCorpCode 정보를 기반으로 CompanyProfile 생성
+        // 4. DartCorpCode 정보를 기반으로 CompanyProfile 생성
         LocalDateTime now = LocalDateTime.now();
         CompanyProfile newProfile = CompanyProfile.builder()
                 .corpCode(corpCode)
+                .headquartersId("HEADQUARTERS".equals(actualUserType) ? headquartersId : null)
+                .partnerId("PARTNER".equals(actualUserType) ? partnerId : null)
+                .userType(actualUserType)
                 .corpName(dartCorpCode.getCorpName())
                 .corpNameEng(dartCorpCode.getCorpEngName())
                 .stockCode(dartCorpCode.getStockCode())
-                .stockName(!StringUtils.hasText(dartCorpCode.getStockCode()) ? null : dartCorpCode.getCorpName()) // 종목명은
-                                                                                                                  // 회사명과
-                                                                                                                  // 동일하게
-                                                                                                                  // 설정
+                .stockName(!StringUtils.hasText(dartCorpCode.getStockCode()) ? null : dartCorpCode.getCorpName())
                 .createdAt(now)
                 .updatedAt(now)
                 .build();
 
-        // 4. CompanyProfile 저장
+        // 5. CompanyProfile 저장
         CompanyProfile savedProfile = companyProfileRepository.save(newProfile);
-        log.info("DartCorpCode 기반 CompanyProfile 생성 완료: corpCode={}, corpName={}",
-                corpCode, savedProfile.getCorpName());
+        log.info("DartCorpCode 기반 CompanyProfile 생성 완료: corpCode={}, userType={}, ownerId={}, corpName={}",
+                corpCode, actualUserType, actualOwnerId, savedProfile.getCorpName());
 
-        // 5. 백그라운드에서 DART API 호출하여 상세 정보 업데이트 (비동기)
+        // 6. 백그라운드에서 DART API 호출하여 상세 정보 업데이트 (비동기)
         publishPartnerCompanyKafkaMessage(corpCode);
 
         return savedProfile;
-    }
-
-    /**
-     * 계층적 ID를 생성합니다.
-     */
-    private String generateHierarchicalId(String hqAccountNumber, int level) {
-        // 해당 본사의 같은 레벨 협력사 수를 조회하여 순번 생성
-        List<PartnerCompany> sameLevel = partnerCompanyRepository.findByHqAccountNumberAndLevel(hqAccountNumber, level);
-        int nextSequence = sameLevel.size() + 1;
-        return String.format("L%d-%03d", level, nextSequence);
     }
 
     /**
@@ -378,7 +386,8 @@ public class PartnerCompanyApiService {
 
         // corpCode 변경 시 CompanyProfile 업데이트
         if (updateDto.getCorpCode() != null && !updateDto.getCorpCode().isEmpty()) {
-            Optional<CompanyProfile> newCompanyProfile = companyProfileRepository.findById(updateDto.getCorpCode());
+            Optional<CompanyProfile> newCompanyProfile = companyProfileRepository
+                    .findByCorpCode(updateDto.getCorpCode());
             if (newCompanyProfile.isPresent()) {
                 partnerCompany.setCompanyProfile(newCompanyProfile.get());
                 log.info("파트너사 CompanyProfile 업데이트: ID={}, 새로운 corpCode={}", id, updateDto.getCorpCode());
@@ -391,10 +400,6 @@ public class PartnerCompanyApiService {
         // 업데이트 가능한 필드들만 수정
         if (updateDto.getContractStartDate() != null) {
             partnerCompany.setContractStartDate(updateDto.getContractStartDate());
-        }
-
-        if (updateDto.getContractEndDate() != null) {
-            partnerCompany.setContractEndDate(updateDto.getContractEndDate());
         }
 
         if (updateDto.getStatus() != null) {
@@ -456,21 +461,15 @@ public class PartnerCompanyApiService {
 
         return PartnerCompanyResponseDto.builder()
                 .id(partnerCompany.getId())
-                .corpCode(profile != null ? profile.getCorpCode() : null)
+                .corpCode(partnerCompany.getCorpCode())
                 .status(partnerCompany.getStatus())
                 .contractStartDate(partnerCompany.getContractStartDate())
-                .contractEndDate(partnerCompany.getContractEndDate())
                 .createdAt(partnerCompany.getCreatedAt())
                 .updatedAt(partnerCompany.getUpdatedAt())
-                // 권한 및 계층형 구조 정보
+                // 소유자 정보
                 .headquartersId(partnerCompany.getHeadquartersId())
                 .partnerId(partnerCompany.getPartnerId())
-                .hqAccountNumber(partnerCompany.getHqAccountNumber())
-                .hierarchicalId(partnerCompany.getHierarchicalId())
-                .level(partnerCompany.getLevel())
-                .treePath(partnerCompany.getTreePath())
-                .parentPartnerId(
-                        partnerCompany.getParentPartner() != null ? partnerCompany.getParentPartner().getId() : null)
+                .userType(partnerCompany.getUserType())
                 // CompanyProfile 정보
                 .corpName(profile != null ? profile.getCorpName() : "정보 없음")
                 .corpNameEng(profile != null ? profile.getCorpNameEng() : null)
@@ -485,7 +484,6 @@ public class PartnerCompanyApiService {
                 .irUrl(profile != null ? profile.getIrUrl() : null)
                 .phoneNumber(profile != null ? profile.getPhoneNumber() : null)
                 .faxNumber(profile != null ? profile.getFaxNumber() : null)
-                .industry(profile != null ? profile.getIndustry() : null)
                 .industryCode(profile != null ? profile.getIndustryCode() : null)
                 .establishmentDate(profile != null ? profile.getEstablishmentDate() : null)
                 .accountingMonth(profile != null ? profile.getAccountingMonth() : null)

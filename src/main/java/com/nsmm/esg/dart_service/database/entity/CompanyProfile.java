@@ -30,10 +30,7 @@ import java.time.LocalDateTime;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 
 import lombok.Getter;
 import lombok.Setter;
@@ -44,7 +41,13 @@ import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 
 @Entity
-@Table(name = "company_profiles")
+@Table(name = "company_profiles", indexes = {
+        @Index(name = "idx_corp_code", columnList = "corp_code"),
+        @Index(name = "idx_headquarters_id", columnList = "headquarters_id"),
+        @Index(name = "idx_partner_id", columnList = "partner_id"),
+        @Index(name = "idx_corp_name", columnList = "corp_name"),
+        @Index(name = "idx_user_type", columnList = "user_type")
+})
 @Getter
 @Setter
 @ToString
@@ -55,8 +58,32 @@ import lombok.AllArgsConstructor;
 public class CompanyProfile {
 
     @Id
-    @Column(name = "corp_code", length = 8)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    // ========================================================================
+    // 기업 식별 정보
+    // ========================================================================
+
+    @Column(name = "corp_code", length = 8, nullable = false)
     private String corpCode; // DART 고유번호
+
+    // ========================================================================
+    // 소유자 정보 (본사 또는 협력사)
+    // ========================================================================
+
+    @Column(name = "headquarters_id")
+    private Long headquartersId; // 본사가 등록한 경우에만 값 존재
+
+    @Column(name = "partner_id")
+    private Long partnerId; // 협력사가 등록한 경우에만 값 존재
+
+    @Column(name = "user_type", nullable = false, length = 20)
+    private String userType; // HEADQUARTERS 또는 PARTNER
+
+    // ========================================================================
+    // 회사 기본 정보
+    // ========================================================================
 
     @Column(name = "corp_name", nullable = false)
     private String corpName; // 정식 회사명
@@ -97,11 +124,8 @@ public class CompanyProfile {
     @Column(name = "fax_number", length = 20)
     private String faxNumber; // 팩스번호
 
-    @Column(name = "industry", length = 200)
-    private String industry; // 업종명 (텍스트)
-
     @Column(name = "industry_code", length = 10)
-    private String industryCode; // 업종 코드 (숫자)
+    private String industryCode; // 업종 코드
 
     @Column(name = "establishment_date", length = 8)
     private String establishmentDate; // 설립일 (YYYYMMDD)
@@ -116,4 +140,29 @@ public class CompanyProfile {
     @UpdateTimestamp
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
+
+    // ========================================================================
+    // 편의 메서드
+    // ========================================================================
+
+    /**
+     * 본사가 등록한 회사인지 확인
+     */
+    public boolean isHeadquartersOwned() {
+        return "HEADQUARTERS".equals(userType) && headquartersId != null;
+    }
+
+    /**
+     * 협력사가 등록한 회사인지 확인
+     */
+    public boolean isPartnerOwned() {
+        return "PARTNER".equals(userType) && partnerId != null;
+    }
+
+    /**
+     * 소유자 ID 반환 (userType에 따라)
+     */
+    public Long getOwnerId() {
+        return isHeadquartersOwned() ? headquartersId : partnerId;
+    }
 }

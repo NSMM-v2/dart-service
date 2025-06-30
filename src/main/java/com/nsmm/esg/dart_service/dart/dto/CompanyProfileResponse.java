@@ -56,27 +56,27 @@ public class CompanyProfileResponse {
     private String corpClass;
 
     @JsonProperty("jurir_no")
-    @Schema(description = "사업자등록번호", example = "124-81-00998")
-    private String businessNumber;
+    @Schema(description = "법인등록번호", example = "1301110006246")
+    private String corporateRegistrationNumber;
 
     @JsonProperty("bizr_no")
-    @Schema(description = "법인등록번호", example = "130111-0006246")
-    private String corporateRegistrationNumber;
+    @Schema(description = "사업자등록번호", example = "1248100998")
+    private String businessNumber;
 
     @JsonProperty("adres")
     @Schema(description = "주소", example = "경기도 수원시 영통구 삼성로 129 (매탄동)")
     private String address;
 
     @JsonProperty("hm_url")
-    @Schema(description = "홈페이지 URL", example = "www.samsung.com", nullable = true)
+    @Schema(description = "홈페이지 URL", example = "www.samsung.com/sec", nullable = true)
     private String homepageUrl;
 
     @JsonProperty("ir_url")
-    @Schema(description = "IR 홈페이지 URL", example = "www.samsung.com/sec/ir", nullable = true)
+    @Schema(description = "IR 홈페이지 URL", example = "", nullable = true)
     private String irUrl;
 
     @JsonProperty("phn_no")
-    @Schema(description = "전화번호", example = "02-2255-0114")
+    @Schema(description = "전화번호", example = "02-2255-0114", nullable = true)
     private String phoneNumber;
 
     @JsonProperty("fax_no")
@@ -88,10 +88,10 @@ public class CompanyProfileResponse {
     private String industryCode;
 
     @JsonProperty("est_dt")
-    @Schema(description = "설립일 (YYYYMMDD 형식)", example = "19690113")
+    @Schema(description = "설립일 (YYYYMMDD)", example = "19690113")
     private String establishmentDate;
 
     @JsonProperty("acc_mt")
-    @Schema(description = "결산월 (MM 형식)", example = "12")
+    @Schema(description = "결산월 (MM)", example = "12")
     private String accountingMonth;
 }

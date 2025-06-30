@@ -134,11 +134,19 @@ public class KafkaConsumerService {
     private CompanyProfile saveOrUpdateCompanyProfileByCorpCode(String corpCode) {
         try {
             // 먼저 DB에서 회사 프로필이 이미 존재하는지 확인
-            Optional<CompanyProfile> existingProfile = companyProfileRepository.findById(corpCode);
+            Optional<CompanyProfile> existingProfile = companyProfileRepository.findByCorpCode(corpCode);
             if (existingProfile.isPresent()) {
+                CompanyProfile profile = existingProfile.get();
                 log.info("DB에서 기존 회사 프로필 정보 발견: corpCode={}, corpName={}",
-                        corpCode, existingProfile.get().getCorpName());
-                return existingProfile.get();
+                        corpCode, profile.getCorpName());
+
+                // 기존 프로필에 상세 정보가 없으면 DART API 호출해서 업데이트
+                if (needsDetailUpdate(profile)) {
+                    log.info("기존 프로필에 상세 정보 부족, DART API 호출하여 업데이트: corpCode={}", corpCode);
+                    return updateProfileWithDartApi(profile, corpCode);
+                }
+
+                return profile;
             }
 
             log.info("DART API를 통해 회사 정보 조회 시도 (transform 사용): corpCode={}", corpCode);
@@ -192,6 +200,9 @@ public class KafkaConsumerService {
                 CompanyProfile defaultProfile = CompanyProfile.builder()
                         .corpCode(corpCode)
                         .corpName(companyName) // DartCorpCode에서 가져온 회사명 또는 "정보 없음"
+                        .headquartersId(null) // 소유자 미정 (DART API 업데이트용 임시 프로필)
+                        .partnerId(null)
+                        .userType("UNKNOWN") // 소유자 미정 상태
                         .createdAt(now)
                         .updatedAt(now)
                         .build();
@@ -204,11 +215,57 @@ public class KafkaConsumerService {
         }
     }
 
+    /**
+     * CompanyProfile에 상세 정보 업데이트가 필요한지 확인
+     */
+    private boolean needsDetailUpdate(CompanyProfile profile) {
+        // 기본적인 상세 정보들이 null이거나 비어있으면 업데이트 필요
+        return profile.getCeoName() == null ||
+                profile.getAddress() == null ||
+                profile.getPhoneNumber() == null ||
+                profile.getBusinessNumber() == null ||
+                profile.getIndustryCode() == null;
+    }
+
+    /**
+     * 기존 CompanyProfile을 DART API로 업데이트
+     */
+    private CompanyProfile updateProfileWithDartApi(CompanyProfile existingProfile, String corpCode) {
+        try {
+            log.info("기존 프로필 DART API 업데이트 시작: corpCode={}", corpCode);
+
+            Optional<CompanyProfile> updatedProfileOpt = dartApiService.getCompanyProfile(corpCode)
+                    .flatMap(profileResponse -> {
+                        if ("000".equals(profileResponse.getStatus())) {
+                            log.info("DART API 업데이트 성공: corpCode={}, corpName={}",
+                                    corpCode, profileResponse.getCorpName());
+                            updateCompanyProfile(existingProfile, profileResponse);
+                            return Mono.just(companyProfileRepository.save(existingProfile));
+                        } else {
+                            log.warn("DART API 업데이트 실패: corpCode={}, status={}, message={}",
+                                    corpCode, profileResponse.getStatus(), profileResponse.getMessage());
+                            return Mono.just(existingProfile); // 기존 프로필 그대로 반환
+                        }
+                    })
+                    .onErrorResume(e -> {
+                        log.error("DART API 업데이트 중 오류 발생: corpCode={}", corpCode, e);
+                        return Mono.just(existingProfile); // 기존 프로필 그대로 반환
+                    })
+                    .blockOptional();
+
+            return updatedProfileOpt.orElse(existingProfile);
+        } catch (Exception e) {
+            log.error("기존 프로필 DART API 업데이트 중 예외 발생: corpCode={}", corpCode, e);
+            return existingProfile; // 기존 프로필 그대로 반환
+        }
+    }
+
     private CompanyProfile saveOrUpdateCompanyProfile(CompanyProfileResponse profileResponse) {
         log.info("회사 프로필 정보 저장/업데이트: corpCode={}, corpName={}",
                 profileResponse.getCorpCode(), profileResponse.getCorpName());
 
-        Optional<CompanyProfile> existingProfile = companyProfileRepository.findById(profileResponse.getCorpCode());
+        Optional<CompanyProfile> existingProfile = companyProfileRepository
+                .findByCorpCode(profileResponse.getCorpCode());
         CompanyProfile companyProfile;
         if (existingProfile.isPresent()) {
             companyProfile = existingProfile.get();
@@ -263,6 +320,9 @@ public class KafkaConsumerService {
                 .industryCode(profileResponse.getIndustryCode()) // 업종코드 설정
                 .establishmentDate(profileResponse.getEstablishmentDate())
                 .accountingMonth(profileResponse.getAccountingMonth())
+                .headquartersId(null) // 소유자 미정 (DART API 업데이트용 임시 프로필)
+                .partnerId(null)
+                .userType("UNKNOWN") // 소유자 미정 상태
                 .createdAt(now)
                 .updatedAt(now)
                 .build();
@@ -304,6 +364,7 @@ public class KafkaConsumerService {
             LocalDate receiptDate = LocalDate.parse(item.getReceiptDate(), DateTimeFormatter.ofPattern("yyyyMMdd"));
             Disclosure disclosure = Disclosure.builder()
                     .receiptNo(item.getReceiptNo())
+                    .corpCode(companyProfile.getCorpCode()) // corp_code 필드 추가
                     .companyProfile(companyProfile)
                     .corpName(item.getCorpName())
                     .stockCode(item.getStockCode())
@@ -316,9 +377,11 @@ public class KafkaConsumerService {
                     .updatedAt(LocalDateTime.now())
                     .build();
             disclosureRepository.save(disclosure);
-            log.debug("공시 정보 저장 완료: receiptNo={}, reportName={}", item.getReceiptNo(), item.getReportName());
+            log.debug("공시 정보 저장 완료: receiptNo={}, reportName={}, corpCode={}",
+                    item.getReceiptNo(), item.getReportName(), companyProfile.getCorpCode());
         } catch (Exception e) {
-            log.error("공시 정보 저장 중 오류 발생: receiptNo={}", item.getReceiptNo(), e);
+            log.error("공시 정보 저장 중 오류 발생: receiptNo={}, corpCode={}",
+                    item.getReceiptNo(), companyProfile != null ? companyProfile.getCorpCode() : "N/A", e);
         }
     }
 
