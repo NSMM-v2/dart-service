@@ -23,6 +23,7 @@ import com.nsmm.esg.dart_service.database.repository.DartCorpCodeRepository;
 import com.nsmm.esg.dart_service.database.repository.DisclosureRepository;
 import com.nsmm.esg.dart_service.database.repository.FinancialStatementDataRepository;
 import com.nsmm.esg.dart_service.database.repository.PartnerCompanyRepository;
+import com.nsmm.esg.dart_service.partner.dto.PartnerCompanyKafkaMessage;
 import com.nsmm.esg.dart_service.partner.dto.PartnerCompanyResponseDto;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -92,22 +93,18 @@ public class KafkaConsumerService {
     /**
      * 파트너 회사 토픽에서 메시지를 소비합니다.
      *
-     * @param partnerCompanyDto 수신된 메시지
+     * @param kafkaMessage 수신된 Kafka 메시지
      */
     @KafkaListener(topics = "${kafka.topic.partner-company}", groupId = "${spring.kafka.consumer.group-id}")
     @Transactional
-    public void consumePartnerCompany(PartnerCompanyResponseDto partnerCompanyDto) {
-        log.info("파트너 회사 DTO 메시지 수신: {}", partnerCompanyDto);
+    public void consumePartnerCompany(PartnerCompanyKafkaMessage kafkaMessage) {
+        log.info("파트너 회사 Kafka 메시지 수신: {}", kafkaMessage);
         try {
-            log.info("파트너 회사 메시지 자동 변환 완료: ID={}, 회사명={}, 고유번호={}",
-                    partnerCompanyDto.getId(), partnerCompanyDto.getCorpName(), partnerCompanyDto.getCorpCode());
+            log.info("파트너 회사 메시지 처리 시작: corpCode={}, action={}, timestamp={}",
+                    kafkaMessage.getCorpCode(), kafkaMessage.getAction(), kafkaMessage.getTimestamp());
 
-            partnerCompanyRepository.findById(partnerCompanyDto.getId()).ifPresentOrElse(
-                    partner -> log.info("DB에서 파트너사 확인: ID={}, 이름={}", partner.getId(), partner.getCompanyName()),
-                    () -> log.warn("파트너사 ID {} 에 해당하는 정보가 DB에 없습니다. (Kafka 메시지 기준 처리 계속)", partnerCompanyDto.getId()));
-
-            if (partnerCompanyDto.getCorpCode() != null && !partnerCompanyDto.getCorpCode().isEmpty()) {
-                String corpCode = partnerCompanyDto.getCorpCode();
+            if (kafkaMessage.getCorpCode() != null && !kafkaMessage.getCorpCode().isEmpty()) {
+                String corpCode = kafkaMessage.getCorpCode();
                 log.info("DART 연동 시작: corpCode={}", corpCode);
 
                 CompanyProfile companyProfile = saveOrUpdateCompanyProfileByCorpCode(corpCode);
@@ -122,14 +119,15 @@ public class KafkaConsumerService {
                     log.warn("회사 프로필 정보를 가져오거나 생성할 수 없어 DART 연동 중단: corpCode={}", corpCode);
                 }
             } else {
-                log.warn("파트너사 메시지에 corpCode가 없어 DART 연동을 수행할 수 없습니다: ID={}", partnerCompanyDto.getId());
-
-                log.info("파트너사 등록 완료 (DART 연동 제외): ID={}", partnerCompanyDto.getId());
+                log.warn("Kafka 메시지에 corpCode가 없어 DART 연동을 수행할 수 없습니다: action={}", kafkaMessage.getAction());
+                log.info("파트너사 이벤트 처리 완료 (DART 연동 제외): action={}", kafkaMessage.getAction());
             }
 
-            log.info("파트너 회사 메시지 처리 완료: ID={}", partnerCompanyDto.getId());
+            log.info("파트너 회사 Kafka 메시지 처리 완료: corpCode={}, action={}",
+                    kafkaMessage.getCorpCode(), kafkaMessage.getAction());
         } catch (Exception e) {
-            log.error("파트너 회사 메시지 처리 중 오류 발생: ID={}", partnerCompanyDto.getId(), e);
+            log.error("파트너 회사 Kafka 메시지 처리 중 오류 발생: corpCode={}, action={}",
+                    kafkaMessage.getCorpCode(), kafkaMessage.getAction(), e);
         }
     }
 
@@ -239,7 +237,7 @@ public class KafkaConsumerService {
         companyProfile.setIrUrl(profileResponse.getIrUrl());
         companyProfile.setPhoneNumber(profileResponse.getPhoneNumber());
         companyProfile.setFaxNumber(profileResponse.getFaxNumber());
-        companyProfile.setIndustryCode(profileResponse.getIndustryCode()); // 업종코드로 변경
+        companyProfile.setIndustryCode(profileResponse.getIndustryCode()); // 업종코드 설정
         companyProfile.setEstablishmentDate(profileResponse.getEstablishmentDate());
         companyProfile.setAccountingMonth(profileResponse.getAccountingMonth());
         companyProfile.setUpdatedAt(LocalDateTime.now());
@@ -262,7 +260,7 @@ public class KafkaConsumerService {
                 .irUrl(profileResponse.getIrUrl())
                 .phoneNumber(profileResponse.getPhoneNumber())
                 .faxNumber(profileResponse.getFaxNumber())
-                .industryCode(profileResponse.getIndustryCode()) // 업종코드로 변경
+                .industryCode(profileResponse.getIndustryCode()) // 업종코드 설정
                 .establishmentDate(profileResponse.getEstablishmentDate())
                 .accountingMonth(profileResponse.getAccountingMonth())
                 .createdAt(now)

@@ -23,7 +23,6 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -58,9 +57,6 @@ public class PartnerCompany {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "corp_code", referencedColumnName = "corp_code")
     private CompanyProfile companyProfile;
-
-    @Column(name = "corp_code", length = 8, nullable = false)
-    private String corpCode; // DART 기업 코드 (필수)
 
     // ========================================================================
     // 본사/협력사 구분 및 관계 (게이트웨이 헤더와 매핑)

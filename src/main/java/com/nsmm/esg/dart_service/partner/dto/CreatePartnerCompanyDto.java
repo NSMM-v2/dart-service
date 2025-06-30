@@ -1,8 +1,8 @@
 /**
  * @file CreatePartnerCompanyDto.java
  * @description 새 파트너사 등록 요청 시 사용되는 DTO입니다.
- *              필수 정보인 회사명, DART 기업 고유 코드, 계약 시작일을 포함합니다.
- *              기존 필드 중 contractEndDate, industry, country, address는 사용자 요청에 의해 제거되었습니다.
+ *              DART 기업 고유 코드를 통해 CompanyProfile에서 회사 정보를 조회하여 파트너사를 등록합니다.
+ *              회사명, 주식 코드 등 상세 정보는 CompanyProfile에서 자동으로 가져옵니다.
  */
 package com.nsmm.esg.dart_service.partner.dto;
 
@@ -23,25 +23,34 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Schema(description = "신규 파트너사 등록 요청 시 사용되는 DTO")
+@Schema(description = "신규 파트너사 등록 요청 시 사용되는 DTO. 회사 정보는 CompanyProfile에서 자동 조회됩니다.")
 public class CreatePartnerCompanyDto {
-    
-    @NotBlank(message = "회사명은 필수 입력 항목입니다.")
-    @Size(max = 255, message = "회사명은 최대 255자까지 입력 가능합니다.")
-    @Schema(description = "파트너 회사명", example = "주식회사 새협력", requiredMode = Schema.RequiredMode.REQUIRED)
-    private String companyName;
-    
+
     @NotBlank(message = "DART 기업 고유 코드는 필수 입력 항목입니다.")
     @Size(min = 8, max = 8, message = "DART 기업 고유 코드는 8자리여야 합니다.")
-    @Schema(description = "DART 기업 고유 코드 (8자리 숫자). 이 코드를 기준으로 DART에서 추가 정보를 조회합니다.", example = "00123456", requiredMode = Schema.RequiredMode.REQUIRED)
+    @Schema(description = "DART 기업 고유 코드 (8자리 숫자). 이 코드를 기준으로 CompanyProfile에서 회사 정보를 조회합니다.", example = "00123456", requiredMode = Schema.RequiredMode.REQUIRED)
     private String corpCode;
-    
+
     @DateTimeFormat(pattern = "yyyy-MM-dd")
     @NotNull(message = "계약 시작일은 필수 입력 항목입니다.")
     @Schema(description = "파트너사와의 계약 시작일 (YYYY-MM-DD 형식)", example = "2023-01-01", requiredMode = Schema.RequiredMode.REQUIRED)
     private LocalDate contractStartDate;
-    
-    @Size(max = 10, message = "주식 코드는 최대 10자까지 입력 가능합니다.")
-    @Schema(description = "주식 코드 (선택사항, DART API에서 자동으로 조회되지만 수동으로도 설정 가능)", example = "005930", nullable = true)
-    private String stockCode;
+
+    @DateTimeFormat(pattern = "yyyy-MM-dd")
+    @Schema(description = "파트너사와의 계약 종료일 (YYYY-MM-DD 형식, 선택사항)", example = "2024-12-31", nullable = true)
+    private LocalDate contractEndDate;
+
+    // ====================================================================
+    // 편의 메서드
+    // ====================================================================
+
+    /**
+     * 로그 출력용 회사명 반환
+     * 실제 회사명은 CompanyProfile에서 조회됩니다.
+     * 
+     * @return 로그용 임시 표시명
+     */
+    public String getCompanyName() {
+        return "DART:" + corpCode; // 로그용 임시 표시명
+    }
 }

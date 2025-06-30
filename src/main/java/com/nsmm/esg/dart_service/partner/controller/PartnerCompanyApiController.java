@@ -27,7 +27,6 @@ import com.nsmm.esg.dart_service.partner.dto.UpdatePartnerCompanyDto;
 import com.nsmm.esg.dart_service.partner.dto.FinancialRiskAssessmentDto;
 import com.nsmm.esg.dart_service.partner.service.PartnerCompanyApiService;
 import com.nsmm.esg.dart_service.partner.service.PartnerFinancialRiskService;
-import com.nsmm.esg.dart_service.kafka.service.KafkaProducerService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -97,24 +96,29 @@ public class PartnerCompanyApiController {
                         @ApiResponse(responseCode = "500", description = "서버 내부 오류 또는 DART API 연동 오류")
         })
         public ResponseEntity<PartnerCompanyResponseDto> createPartnerCompany(
-                        @Parameter(description = "파트너사를 등록하는 회원의 ID (요청 헤더 X-Member-Id로 전달)", required = true, example = "user-member-uuid") @RequestHeader("X-MEMBER-ID") String memberId,
+                        @Parameter(description = "본사 ID (게이트웨이 헤더)", required = true) @RequestHeader("X-HEADQUARTERS-ID") Long headquartersId,
+                        @Parameter(description = "협력사 사용자 ID (게이트웨이 헤더, 선택사항)") @RequestHeader(value = "X-PARTNER-ID", required = false) Long partnerId,
+                        @Parameter(description = "본사 계정 번호 (게이트웨이 헤더)", required = true) @RequestHeader("X-ACCOUNT-NUMBER") String hqAccountNumber,
 
                         @Parameter(description = "등록할 파트너사의 정보", required = true, schema = @Schema(implementation = CreatePartnerCompanyDto.class)) @Valid @RequestBody CreatePartnerCompanyDto createDto) {
 
-                log.info("파트너사 등록 API 요청 - 회사명: {}, 회원 ID: {}", createDto.getCompanyName(), memberId);
-                PartnerCompanyResponseDto response = partnerCompanyApiService.createPartnerCompany(createDto, memberId);
+                log.info("파트너사 등록 API 요청 - 회사명: {}, 본사 ID: {}, 협력사 ID: {}", createDto.getCompanyName(), headquartersId,
+                                partnerId);
+                PartnerCompanyResponseDto response = partnerCompanyApiService.createPartnerCompany(createDto,
+                                headquartersId, partnerId, hqAccountNumber);
                 return ResponseEntity.status(HttpStatus.CREATED).body(response);
         }
 
         @GetMapping("/partner-companies")
-        @Operation(summary = "특정 사용자의 파트너사 목록 조회 (페이지네이션)", description = "X-Member-Id 헤더로 전달된 사용자가 등록한 활성(ACTIVE) 상태의 파트너사 목록을 페이지네이션하여 조회합니다. 회사명으로 필터링할 수 있습니다.")
+        @Operation(summary = "조직별 파트너사 목록 조회 (페이지네이션)", description = "본사/협력사별로 등록한 활성(ACTIVE) 상태의 파트너사 목록을 페이지네이션하여 조회합니다. 회사명으로 필터링할 수 있습니다.")
         @ApiResponses(value = {
                         @ApiResponse(responseCode = "200", description = "페이지네이션을 포함한 파트너사 목록입니다.", content = @Content(mediaType = "application/json", schema = @Schema(implementation = PaginatedPartnerCompanyResponseDto.class))),
-                        @ApiResponse(responseCode = "400", description = "잘못된 페이지네이션 파라미터 또는 X-Member-Id 헤더 누락"),
+                        @ApiResponse(responseCode = "400", description = "잘못된 페이지네이션 파라미터 또는 필수 헤더 누락"),
                         @ApiResponse(responseCode = "500", description = "서버 내부 오류")
         })
         public ResponseEntity<PaginatedPartnerCompanyResponseDto> findAllPartnerCompanies(
-                        @Parameter(description = "파트너사를 조회하는 회원의 ID (요청 헤더 X-Member-Id로 전달)", required = true, example = "user-member-uuid") @RequestHeader("X-MEMBER-ID") String memberId,
+                        @Parameter(description = "본사 ID (게이트웨이 헤더)", required = true) @RequestHeader("X-HEADQUARTERS-ID") Long headquartersId,
+                        @Parameter(description = "협력사 사용자 ID (게이트웨이 헤더, 선택사항)") @RequestHeader(value = "X-PARTNER-ID", required = false) Long partnerId,
 
                         @Parameter(description = "조회할 페이지 번호 (1부터 시작)", example = "1") @RequestParam(defaultValue = "1") int page,
 
@@ -126,11 +130,12 @@ public class PartnerCompanyApiController {
                 int validPage = Math.max(1, page);
                 int validPageSize = Math.max(1, Math.min(100, pageSize));
 
-                log.info("파트너사 목록 조회 API 요청 - 회원 ID: {}, 페이지: {} (검증후: {}), 페이지 크기: {} (검증후: {}), 회사명 필터: {}",
-                                memberId, page, validPage, pageSize, validPageSize, companyName);
+                log.info("파트너사 목록 조회 API 요청 - 본사 ID: {}, 협력사 ID: {}, 페이지: {} (검증후: {}), 페이지 크기: {} (검증후: {}), 회사명 필터: {}",
+                                headquartersId, partnerId, page, validPage, pageSize, validPageSize, companyName);
 
                 PaginatedPartnerCompanyResponseDto response = partnerCompanyApiService
-                                .findAllPartnerCompaniesByMemberId(memberId, validPage, validPageSize, companyName);
+                                .findAllPartnerCompaniesByOrganization(headquartersId, partnerId, validPage,
+                                                validPageSize, companyName);
                 return ResponseEntity.ok(response);
         }
 
@@ -166,37 +171,39 @@ public class PartnerCompanyApiController {
         // ----------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
         @PatchMapping("/partner-companies/{id}")
-        @Operation(summary = "특정 파트너사 정보 수정 (ID)", description = "시스템에 등록된 특정 파트너사의 정보를 ID(UUID)를 이용하여 수정합니다. corpCode 변경 시 DART API를 통해 추가 정보를 업데이트하며, Kafka로 파트너사 업데이트 이벤트를 발행합니다.")
+        @Operation(summary = "특정 파트너사 정보 수정 (ID)", description = "시스템에 등록된 특정 파트너사의 정보를 ID(UUID)를 이용하여 수정합니다. 계약 관련 정보만 수정 가능합니다.")
         @ApiResponses(value = {
                         @ApiResponse(responseCode = "200", description = "파트너사 정보가 성공적으로 수정되었습니다.", content = @Content(mediaType = "application/json", schema = @Schema(implementation = PartnerCompanyResponseDto.class))),
                         @ApiResponse(responseCode = "400", description = "잘못된 요청 데이터 (예: 형식 오류)"),
                         @ApiResponse(responseCode = "404", description = "수정할 파트너사를 찾을 수 없습니다."),
-                        @ApiResponse(responseCode = "500", description = "서버 내부 오류 또는 DART API 연동 오류")
+                        @ApiResponse(responseCode = "500", description = "서버 내부 오류")
         })
         public ResponseEntity<PartnerCompanyResponseDto> updatePartnerCompany(
-                        @RequestHeader("X-MEMBER-ID") String memberId,
+                        @Parameter(description = "본사 ID (게이트웨이 헤더)", required = true) @RequestHeader("X-HEADQUARTERS-ID") Long headquartersId,
+                        @Parameter(description = "협력사 사용자 ID (게이트웨이 헤더, 선택사항)") @RequestHeader(value = "X-PARTNER-ID", required = false) Long partnerId,
                         @Parameter(description = "수정할 파트너사의 고유 ID (UUID 형식)", required = true, example = "a1b2c3d4-e5f6-7890-1234-567890abcdef") @PathVariable String id,
 
                         @Parameter(description = "수정할 파트너사의 정보", required = true, schema = @Schema(implementation = UpdatePartnerCompanyDto.class)) @Valid @RequestBody UpdatePartnerCompanyDto updateDto) {
 
-                log.info("파트너사 정보 수정 API 요청 - ID: {}, 사용자 ID: {}", id, memberId);
+                log.info("파트너사 정보 수정 API 요청 - ID: {}, 본사 ID: {}, 협력사 ID: {}", id, headquartersId, partnerId);
                 PartnerCompanyResponseDto response = partnerCompanyApiService.updatePartnerCompany(id, updateDto);
                 return ResponseEntity.ok(response);
         }
         // ----------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
         @DeleteMapping("/partner-companies/{id}")
-        @Operation(summary = "특정 파트너사 삭제 (ID, 소프트 삭제)", description = "시스템에 등록된 특정 파트너사를 논리적으로 삭제합니다 (상태를 INACTIVE로 변경). Kafka로 파트너사 삭제 이벤트를 발행합니다.")
+        @Operation(summary = "특정 파트너사 삭제 (ID, 소프트 삭제)", description = "시스템에 등록된 특정 파트너사를 논리적으로 삭제합니다 (상태를 INACTIVE로 변경).")
         @ApiResponses(value = {
-                        @ApiResponse(responseCode = "200", description = "파트너사가 성공적으로 비활성화(소프트 삭제)되었습니다.", content = @Content(mediaType = "application/json", schema = @Schema(type = "object", example = "{\"message\": \"ID '...' 파트너사가 성공적으로 비활성화되었습니다.\"}"))),
+                        @ApiResponse(responseCode = "200", description = "파트너사가 성공적으로 비활성화(소프트 삭제)되었습니다.", content = @Content(mediaType = "application/json", schema = @Schema(type = "object", example = "{\"message\": \"파트너사가 성공적으로 비활성화되었습니다.\", \"id\": \"uuid\"}"))),
                         @ApiResponse(responseCode = "404", description = "삭제할 파트너사를 찾을 수 없습니다."),
                         @ApiResponse(responseCode = "500", description = "서버 내부 오류")
         })
         public ResponseEntity<Map<String, String>> deletePartnerCompany(
-                        @RequestHeader("X-MEMBER-ID") String memberId,
+                        @Parameter(description = "본사 ID (게이트웨이 헤더)", required = true) @RequestHeader("X-HEADQUARTERS-ID") Long headquartersId,
+                        @Parameter(description = "협력사 사용자 ID (게이트웨이 헤더, 선택사항)") @RequestHeader(value = "X-PARTNER-ID", required = false) Long partnerId,
                         @Parameter(description = "삭제(비활성화)할 파트너사의 고유 ID (UUID 형식)", required = true, example = "a1b2c3d4-e5f6-7890-1234-567890abcdef") @PathVariable String id) {
 
-                log.info("파트너사 삭제 API 요청 - ID: {}, 사용자 ID: {}", id, memberId);
+                log.info("파트너사 삭제 API 요청 - ID: {}, 본사 ID: {}, 협력사 ID: {}", id, headquartersId, partnerId);
                 Map<String, String> response = partnerCompanyApiService.deletePartnerCompany(id);
                 return ResponseEntity.ok(response);
         }
@@ -230,48 +237,7 @@ public class PartnerCompanyApiController {
         }
 
         // ----------------------------------------------------------------------------------------------------------------------------------------------------------------------
-        // 스코프 설정용 파트너 회사 목록 조회 컨트롤러
 
-        @GetMapping("/partner-companies/for-scope")
-        @Operation(summary = "Scope 등록용 협력사 목록 조회", description = "Scope 데이터 등록 시 사용하는 협력사 목록을 조회합니다. ACTIVE 상태 협력사만 반환하며, 이미 등록된 Scope의 조회 시에는 INACTIVE 협력사 정보도 포함됩니다.")
-        @ApiResponses(value = {
-                        @ApiResponse(responseCode = "200", description = "Scope용 협력사 목록 조회 성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = PaginatedPartnerCompanyResponseDto.class))),
-                        @ApiResponse(responseCode = "500", description = "서버 내부 오류")
-        })
-        public ResponseEntity<PaginatedPartnerCompanyResponseDto> getPartnerCompaniesForScope(
-                        @RequestHeader("X-MEMBER-ID") String memberId,
-                        @Parameter(description = "페이지 번호 (0부터 시작)", example = "0") @RequestParam(defaultValue = "0") int page,
-                        @Parameter(description = "페이지 크기", example = "100") @RequestParam(defaultValue = "100") int size,
-                        @Parameter(description = "회사명 필터 (부분 검색)", required = false) @RequestParam(required = false) String companyNameFilter,
-                        @Parameter(description = "INACTIVE 협력사 포함 여부 (기본값: false)", example = "false") @RequestParam(defaultValue = "false") boolean includeInactive) {
-
-                log.info("Scope용 협력사 목록 조회 API 요청 - 사용자 ID: {}, 페이지: {}, 크기: {}, 필터: {}, INACTIVE 포함: {}",
-                                memberId, page, size, companyNameFilter, includeInactive);
-
-                PaginatedPartnerCompanyResponseDto response = partnerCompanyApiService.getPartnerCompaniesForScope(
-                                page, size, companyNameFilter, includeInactive);
-                return ResponseEntity.ok(response);
-        }
-
-        // ----------------------------------------------------------------------------------------------------------------------------------------------------------------------
-        // 스코프 설정용 파트너 회사 상세 정보 조회 컨트롤러
-        @GetMapping("/partner-companies/{id}/for-scope")
-        @Operation(summary = "Scope용 특정 협력사 정보 조회", description = "Scope 데이터에서 사용하는 특정 협력사 정보를 조회합니다. INACTIVE 상태 협력사도 조회 가능합니다.")
-        @ApiResponses(value = {
-                        @ApiResponse(responseCode = "200", description = "협력사 정보 조회 성공", content = @Content(mediaType = "application/json", schema = @Schema(implementation = PartnerCompanyResponseDto.class))),
-                        @ApiResponse(responseCode = "404", description = "협력사를 찾을 수 없습니다."),
-                        @ApiResponse(responseCode = "500", description = "서버 내부 오류")
-        })
-        public ResponseEntity<PartnerCompanyResponseDto> getPartnerCompanyForScope(
-                        @RequestHeader("X-MEMBER-ID") String memberId,
-                        @Parameter(description = "조회할 협력사의 고유 ID (UUID 형식)", required = true) @PathVariable String id) {
-
-                log.info("Scope용 협력사 정보 조회 API 요청 - ID: {}, 사용자 ID: {}", id, memberId);
-                PartnerCompanyResponseDto response = partnerCompanyApiService.getPartnerCompanyForScope(id);
-                return ResponseEntity.ok(response);
-        }
-
-        // ----------------------------------------------------------------------------------------------------------------------------------------------------------------------
         // 파트너 회사명 중복 확인 컨트롤러
         @GetMapping("/partner-companies/check-duplicate")
         @Operation(summary = "협력사 회사명 중복 검사", description = "새로운 협력사 등록 또는 기존 협력사 수정 시 회사명 중복 여부를 확인합니다.")
@@ -281,12 +247,11 @@ public class PartnerCompanyApiController {
                         @ApiResponse(responseCode = "500", description = "서버 내부 오류")
         })
         public ResponseEntity<Map<String, Object>> checkCompanyNameDuplicate(
-                        @RequestHeader("X-MEMBER-ID") String memberId,
                         @Parameter(description = "검사할 회사명", required = true) @RequestParam String companyName,
                         @Parameter(description = "수정 시 제외할 협력사 ID (새 등록 시 생략)", required = false) @RequestParam(required = false) String excludeId) {
 
-                log.info("협력사 회사명 중복 검사 API 요청 - 사용자 ID: {}, 회사명: {}, 제외 ID: {}",
-                                memberId, companyName, excludeId);
+                log.info("협력사 회사명 중복 검사 API 요청 - 회사명: {}, 제외 ID: {}",
+                                companyName, excludeId);
 
                 Map<String, Object> response = partnerCompanyApiService.checkCompanyNameDuplicate(companyName,
                                 excludeId);
