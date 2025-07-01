@@ -40,6 +40,7 @@ import lombok.extern.slf4j.Slf4j;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -139,28 +140,40 @@ public class PartnerCompanyApiService {
                     "해당 기업코드의 회사 정보를 찾을 수 없습니다. corpCode: " + createDto.getCorpCode());
         }
 
-        // 2. ACTIVE 상태의 중복 회사명 검사
-        Optional<PartnerCompany> activePartner = partnerCompanyRepository
-                .findByCompanyNameIgnoreCaseAndStatus(companyProfile.getCorpName(), PartnerCompanyStatus.ACTIVE);
-
-        if (activePartner.isPresent()) {
-            log.warn("ACTIVE 상태의 중복된 회사명으로 파트너사 등록 시도 - 회사명: {}", companyProfile.getCorpName());
-
-            PartnerCompany existing = activePartner.get();
-            // 동일한 본사/협력사에서 등록하는 경우 기존 정보 반환
-            if (existing.getHeadquartersId().equals(headquartersId) &&
-                    (partnerId == null || partnerId.equals(existing.getPartnerId()))) {
-                log.info("이미 등록된 파트너사 정보 반환 - 회사명: {}", companyProfile.getCorpName());
-                return mapToResponseDto(existing, false);
-            } else {
-                throw new ResponseStatusException(HttpStatus.CONFLICT,
-                        String.format("'%s' 이름의 파트너사가 이미 시스템에 등록되어 있습니다.", companyProfile.getCorpName()));
-            }
+        // 2. 본사별/협력사별 ACTIVE 상태의 중복 회사명 검사
+        // 실제 요청자 타입에 따른 중복 검사
+        Optional<PartnerCompany> activePartner;
+        if (partnerId != null) {
+            // 협력사인 경우: 해당 협력사가 등록한 동일 회사명 검사
+            activePartner = partnerCompanyRepository
+                    .findByPartnerIdAndCompanyNameIgnoreCaseAndStatus(partnerId, companyProfile.getCorpName(),
+                            PartnerCompanyStatus.ACTIVE);
+        } else {
+            // 본사인 경우: 해당 본사가 등록한 동일 회사명 검사
+            activePartner = partnerCompanyRepository
+                    .findByHeadquartersIdAndCompanyNameIgnoreCaseAndStatus(headquartersId, companyProfile.getCorpName(),
+                            PartnerCompanyStatus.ACTIVE);
         }
 
-        // 3. INACTIVE 상태의 동일한 회사명이 있는지 확인하고 복원
-        Optional<PartnerCompany> inactivePartner = partnerCompanyRepository
-                .findByCompanyNameIgnoreCaseAndStatus(companyProfile.getCorpName(), PartnerCompanyStatus.INACTIVE);
+        if (activePartner.isPresent()) {
+            log.info("동일한 본사/협력사에서 이미 등록된 파트너사 정보 반환 - 회사명: {}, 본사ID: {}, 협력사ID: {}",
+                    companyProfile.getCorpName(), headquartersId, partnerId);
+            return mapToResponseDto(activePartner.get(), false);
+        }
+
+        // 3. INACTIVE 상태의 동일한 회사명이 있는지 확인하고 복원 (본사별/협력사별)
+        Optional<PartnerCompany> inactivePartner;
+        if (partnerId != null) {
+            // 협력사인 경우: 해당 협력사가 등록한 INACTIVE 회사명 검사
+            inactivePartner = partnerCompanyRepository
+                    .findByPartnerIdAndCompanyNameIgnoreCaseAndStatus(partnerId, companyProfile.getCorpName(),
+                            PartnerCompanyStatus.INACTIVE);
+        } else {
+            // 본사인 경우: 해당 본사가 등록한 INACTIVE 회사명 검사
+            inactivePartner = partnerCompanyRepository
+                    .findByHeadquartersIdAndCompanyNameIgnoreCaseAndStatus(headquartersId, companyProfile.getCorpName(),
+                            PartnerCompanyStatus.INACTIVE);
+        }
 
         if (inactivePartner.isPresent()) {
             log.info("INACTIVE 상태의 기존 파트너사 발견 - 복원 처리: {}", companyProfile.getCorpName());

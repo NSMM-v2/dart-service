@@ -205,19 +205,4 @@ public class DartApiController {
                                 });
         }
 
-        @GetMapping("/debug/config")
-        @Operation(summary = "[디버깅] API 설정 확인", description = "DART API 키와 기본 설정을 확인합니다.")
-        public ResponseEntity<String> debugConfig() {
-                // API 키를 마스킹하여 표시
-                String maskedApiKey = "설정되지 않음";
-                try {
-                        // DartApiService를 통해 간접적으로 설정 확인
-                        String configInfo = "DART API 설정 확인 중...";
-                        log.info("[DEBUG] API 설정 확인 요청");
-                        return ResponseEntity.ok(configInfo);
-                } catch (Exception e) {
-                        log.error("[DEBUG] API 설정 확인 중 오류", e);
-                        return ResponseEntity.ok("API 설정 확인 중 오류: " + e.getMessage());
-                }
-        }
 }

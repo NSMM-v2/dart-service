@@ -37,6 +37,8 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import reactor.core.publisher.Mono;
 
@@ -133,10 +135,18 @@ public class KafkaConsumerService {
 
     private CompanyProfile saveOrUpdateCompanyProfileByCorpCode(String corpCode) {
         try {
-            // 먼저 DB에서 회사 프로필이 이미 존재하는지 확인
-            Optional<CompanyProfile> existingProfile = companyProfileRepository.findByCorpCode(corpCode);
-            if (existingProfile.isPresent()) {
-                CompanyProfile profile = existingProfile.get();
+            // 먼저 DB에서 회사 프로필이 이미 존재하는지 확인 (중복 처리)
+            List<CompanyProfile> existingProfiles = companyProfileRepository.findAllByCorpCode(corpCode);
+
+            if (!existingProfiles.isEmpty()) {
+                // 중복 데이터가 있는 경우 처리
+                if (existingProfiles.size() > 1) {
+                    log.warn("CompanyProfile 중복 데이터 발견: corpCode={}, 개수={}", corpCode, existingProfiles.size());
+                    CompanyProfile bestProfile = consolidateCompanyProfiles(existingProfiles, corpCode);
+                    return bestProfile;
+                }
+
+                CompanyProfile profile = existingProfiles.get(0);
                 log.info("DB에서 기존 회사 프로필 정보 발견: corpCode={}, corpName={}",
                         corpCode, profile.getCorpName());
 
@@ -399,7 +409,6 @@ public class KafkaConsumerService {
         String lastYear = String.valueOf(today.minusYears(1).getYear());
 
         retrieveAndSaveSingleFinancialStatement(corpCode, lastYear, "11011");
-
         retrieveAndSaveSingleFinancialStatement(corpCode, currentYear, "11014");
         retrieveAndSaveSingleFinancialStatement(corpCode, currentYear, "11012");
         retrieveAndSaveSingleFinancialStatement(corpCode, currentYear, "11013");
@@ -407,6 +416,7 @@ public class KafkaConsumerService {
 
     /**
      * 특정 연도, 특정 보고서 코드에 대한 재무제표를 조회하고 저장합니다.
+     * 기존 데이터는 삭제하지 않고, 새로운 데이터만 추가합니다.
      * 
      * @param corpCode  회사 고유번호
      * @param bsnsYear  사업연도 (YYYY)
@@ -416,13 +426,14 @@ public class KafkaConsumerService {
         log.info("단일 재무제표 조회 및 저장 시도: corpCode={}, bsnsYear={}, reprtCode={}, fsDiv={}",
                 corpCode, bsnsYear, reprtCode, FS_DIV_OFS);
         try {
-            long deletedCount = financialStatementDataRepository.deleteByCorpCodeAndBsnsYearAndReprtCode(corpCode,
-                    bsnsYear, reprtCode);
-            if (deletedCount > 0) {
-                log.info("기존 재무제표 데이터 {}건 삭제: corpCode={}, bsnsYear={}, reprtCode={}",
-                        deletedCount, corpCode, bsnsYear, reprtCode);
-            }
+            // 기존 데이터 조회 (삭제하지 않음)
+            List<FinancialStatementData> existingData = financialStatementDataRepository
+                    .findByCorpCodeAndBsnsYearAndReprtCode(corpCode, bsnsYear, reprtCode);
 
+            log.info("기존 재무제표 데이터 {}건 확인: corpCode={}, bsnsYear={}, reprtCode={}",
+                    existingData.size(), corpCode, bsnsYear, reprtCode);
+
+            // DART API에서 최신 데이터 조회
             FinancialStatementResponseDto responseDto = dartApiService
                     .getFinancialStatement(corpCode, bsnsYear, reprtCode, FS_DIV_OFS).block();
 
@@ -430,7 +441,10 @@ public class KafkaConsumerService {
                     && !responseDto.getList().isEmpty()) {
                 log.info("재무제표 조회 성공: {}건의 항목. corpCode={}, bsnsYear={}, reprtCode={}",
                         responseDto.getList().size(), corpCode, bsnsYear, reprtCode);
-                processAndSaveFinancialStatementItems(responseDto.getList(), corpCode, bsnsYear, reprtCode);
+
+                // 새로운 데이터만 필터링하여 저장
+                processAndSaveNewFinancialStatementItems(responseDto.getList(), existingData, corpCode, bsnsYear,
+                        reprtCode);
             } else {
                 log.warn("재무제표 데이터가 없거나 오류 발생: corpCode={}, bsnsYear={}, reprtCode={}, status={}, msg={}",
                         corpCode, bsnsYear, reprtCode,
@@ -442,43 +456,162 @@ public class KafkaConsumerService {
         }
     }
 
-    private void processAndSaveFinancialStatementItems(List<FinancialStatementResponseDto.FinancialStatementItem> items,
+    /**
+     * 새로운 재무제표 항목만 필터링하여 저장합니다.
+     * 기존 데이터와 중복되지 않는 항목만 저장합니다.
+     * 
+     * @param newItems     API에서 조회한 새로운 항목들
+     * @param existingData DB에 이미 존재하는 데이터
+     * @param corpCode     회사 고유번호
+     * @param bsnsYear     사업연도
+     * @param reprtCode    보고서 코드
+     */
+    private void processAndSaveNewFinancialStatementItems(
+            List<FinancialStatementResponseDto.FinancialStatementItem> newItems,
+            List<FinancialStatementData> existingData,
             String corpCode, String bsnsYear, String reprtCode) {
-        List<FinancialStatementData> dataToSave = new ArrayList<>();
-        LocalDateTime now = LocalDateTime.now();
 
-        for (FinancialStatementResponseDto.FinancialStatementItem item : items) {
-            FinancialStatementData fsData = FinancialStatementData.builder()
-                    .corpCode(corpCode)
-                    .bsnsYear(bsnsYear)
-                    .reprtCode(reprtCode)
-                    .sjDiv(item.getSjDiv())
-                    .accountId(item.getAccountId())
-                    .accountNm(item.getAccountNm())
-                    .thstrmNm(item.getThstrmNm())
-                    .thstrmAmount(item.getThstrmAmount())
-                    .thstrmAddAmount(item.getThstrmAddAmount())
-                    .frmtrmNm(item.getFrmtrmNm())
-                    .frmtrmAmount(item.getFrmtrmAmount())
-                    .frmtrmQNm(item.getFrmtrmQNm())
-                    .frmtrmQAmount(item.getFrmtrmQAmount())
-                    .frmtrmAddAmount(item.getFrmtrmAddAmount())
-                    .bfefrmtrmNm(item.getBfefrmtrmNm())
-                    .bfefrmtrmAmount(item.getBfefrmtrmAmount())
-                    .currency(item.getCurrency())
-                    .createdAt(now)
-                    .updatedAt(now)
-                    .build();
-            dataToSave.add(fsData);
+        LocalDateTime now = LocalDateTime.now();
+        List<FinancialStatementData> dataToSave = new ArrayList<>();
+
+        // 기존 데이터를 빠른 조회를 위해 Set으로 변환 (accountId + sjDiv 조합으로 중복 체크)
+        Set<String> existingKeys = existingData.stream()
+                .map(data -> generateFinancialDataKey(data.getAccountId(), data.getSjDiv()))
+                .collect(Collectors.toSet());
+
+        log.info("기존 재무제표 항목 {}개의 고유 키 생성 완료", existingKeys.size());
+
+        // 새로운 항목들 중 기존에 없는 것만 필터링
+        for (FinancialStatementResponseDto.FinancialStatementItem item : newItems) {
+            String itemKey = generateFinancialDataKey(item.getAccountId(), item.getSjDiv());
+
+            if (!existingKeys.contains(itemKey)) {
+                // 새로운 데이터만 추가
+                FinancialStatementData fsData = FinancialStatementData.builder()
+                        .corpCode(corpCode)
+                        .bsnsYear(bsnsYear)
+                        .reprtCode(reprtCode)
+                        .sjDiv(item.getSjDiv())
+                        .accountId(item.getAccountId())
+                        .accountNm(item.getAccountNm())
+                        .thstrmNm(item.getThstrmNm())
+                        .thstrmAmount(item.getThstrmAmount())
+                        .thstrmAddAmount(item.getThstrmAddAmount())
+                        .frmtrmNm(item.getFrmtrmNm())
+                        .frmtrmAmount(item.getFrmtrmAmount())
+                        .frmtrmQNm(item.getFrmtrmQNm())
+                        .frmtrmQAmount(item.getFrmtrmQAmount())
+                        .frmtrmAddAmount(item.getFrmtrmAddAmount())
+                        .bfefrmtrmNm(item.getBfefrmtrmNm())
+                        .bfefrmtrmAmount(item.getBfefrmtrmAmount())
+                        .currency(item.getCurrency())
+                        .createdAt(now)
+                        .updatedAt(now)
+                        .build();
+                dataToSave.add(fsData);
+
+                log.debug("새로운 재무제표 항목 추가 대상: accountId={}, accountNm={}",
+                        item.getAccountId(), item.getAccountNm());
+            } else {
+                log.debug("기존 재무제표 항목 스킵: accountId={}, accountNm={}",
+                        item.getAccountId(), item.getAccountNm());
+            }
         }
 
+        // 새로운 데이터가 있는 경우에만 저장
         if (!dataToSave.isEmpty()) {
             financialStatementDataRepository.saveAll(dataToSave);
-            log.info("DB에 재무제표 항목 {}건 저장 완료: corpCode={}, bsnsYear={}, reprtCode={}",
+            log.info("DB에 새로운 재무제표 항목 {}건 저장 완료: corpCode={}, bsnsYear={}, reprtCode={}",
                     dataToSave.size(), corpCode, bsnsYear, reprtCode);
         } else {
-            log.info("DB에 저장할 재무제표 항목 없음: corpCode={}, bsnsYear={}, reprtCode={}",
+            log.info("저장할 새로운 재무제표 항목 없음 (모든 데이터가 이미 존재): corpCode={}, bsnsYear={}, reprtCode={}",
                     corpCode, bsnsYear, reprtCode);
         }
+
+        log.info("재무제표 데이터 처리 완료 - 전체: {}건, 기존: {}건, 신규 저장: {}건",
+                newItems.size(), existingData.size(), dataToSave.size());
+    }
+
+    /**
+     * 재무제표 항목의 고유 키를 생성합니다.
+     * accountId와 sjDiv 조합으로 중복을 판단합니다.
+     * 
+     * @param accountId 계정 ID
+     * @param sjDiv     재무제표 구분
+     * @return 고유 키 문자열
+     */
+    private String generateFinancialDataKey(String accountId, String sjDiv) {
+        return String.format("%s|%s",
+                accountId != null ? accountId : "NULL",
+                sjDiv != null ? sjDiv : "NULL");
+    }
+
+    /**
+     * 중복된 CompanyProfile들을 하나로 통합합니다.
+     * 가장 완성도가 높은 프로필을 기준으로 하고, 나머지는 삭제하지 않고 최적 프로필만 반환합니다.
+     * 외래키 제약 조건 때문에 삭제하지 않고 최적 프로필만 사용합니다.
+     */
+    private CompanyProfile consolidateCompanyProfiles(List<CompanyProfile> profiles, String corpCode) {
+        log.info("CompanyProfile 중복 데이터 통합 시작: corpCode={}, 개수={}", corpCode, profiles.size());
+
+        // 가장 완성도가 높은 프로필 선택 (상세 정보가 많은 것 우선)
+        CompanyProfile bestProfile = profiles.stream()
+                .max((p1, p2) -> {
+                    int score1 = calculateProfileCompleteness(p1);
+                    int score2 = calculateProfileCompleteness(p2);
+                    return Integer.compare(score1, score2);
+                })
+                .orElse(profiles.get(0));
+
+        log.info("최적 프로필 선택: id={}, corpName={}, 완성도 점수={}",
+                bestProfile.getId(), bestProfile.getCorpName(), calculateProfileCompleteness(bestProfile));
+
+        // 중복 프로필들에 대한 정보만 로깅 (삭제하지 않음)
+        for (CompanyProfile profile : profiles) {
+            if (!profile.getId().equals(bestProfile.getId())) {
+                log.info("중복 프로필 발견 (삭제하지 않고 무시): id={}, corpName={}, 완성도 점수={}",
+                        profile.getId(), profile.getCorpName(), calculateProfileCompleteness(profile));
+            }
+        }
+
+        log.info("CompanyProfile 중복 데이터 통합 완료 (최적 프로필만 사용): corpCode={}", corpCode);
+        return bestProfile;
+    }
+
+    /**
+     * CompanyProfile의 완성도를 점수로 계산합니다.
+     */
+    private int calculateProfileCompleteness(CompanyProfile profile) {
+        int score = 0;
+
+        // 기본 정보
+        if (profile.getCorpName() != null && !profile.getCorpName().isEmpty())
+            score++;
+        if (profile.getCeoName() != null && !profile.getCeoName().isEmpty())
+            score++;
+        if (profile.getAddress() != null && !profile.getAddress().isEmpty())
+            score++;
+        if (profile.getPhoneNumber() != null && !profile.getPhoneNumber().isEmpty())
+            score++;
+        if (profile.getBusinessNumber() != null && !profile.getBusinessNumber().isEmpty())
+            score++;
+        if (profile.getIndustryCode() != null && !profile.getIndustryCode().isEmpty())
+            score++;
+        if (profile.getEstablishmentDate() != null && !profile.getEstablishmentDate().isEmpty())
+            score++;
+        if (profile.getAccountingMonth() != null && !profile.getAccountingMonth().isEmpty())
+            score++;
+
+        // 추가 정보
+        if (profile.getCorpNameEng() != null && !profile.getCorpNameEng().isEmpty())
+            score++;
+        if (profile.getStockCode() != null && !profile.getStockCode().isEmpty())
+            score++;
+        if (profile.getHomepageUrl() != null && !profile.getHomepageUrl().isEmpty())
+            score++;
+        if (profile.getFaxNumber() != null && !profile.getFaxNumber().isEmpty())
+            score++;
+
+        return score;
     }
 }

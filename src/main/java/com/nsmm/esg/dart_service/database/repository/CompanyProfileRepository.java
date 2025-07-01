@@ -80,4 +80,12 @@ public interface CompanyProfileRepository extends JpaRepository<CompanyProfile, 
      * @return 협력사 소유 회사 정보 목록
      */
     List<CompanyProfile> findByPartnerId(Long partnerId);
+
+    /**
+     * DART 기업 코드로 모든 회사 정보를 조회합니다. (중복 데이터 처리용)
+     *
+     * @param corpCode DART 기업 코드
+     * @return 해당 기업 코드를 가진 모든 회사 정보 목록
+     */
+    List<CompanyProfile> findAllByCorpCode(String corpCode);
 }

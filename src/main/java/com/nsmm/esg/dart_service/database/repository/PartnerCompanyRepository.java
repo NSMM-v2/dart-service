@@ -212,4 +212,38 @@ public interface PartnerCompanyRepository extends JpaRepository<PartnerCompany, 
                         @Param("partnerId") Long partnerId,
                         @Param("corpCode") String corpCode);
 
+        /**
+         * 특정 본사의 회사명으로 파트너 회사를 검색합니다. (정확히 일치, 대소문자 구분 없음)
+         *
+         * @param headquartersId 본사 ID
+         * @param companyName    회사명 (정확히 일치)
+         * @param status         파트너 회사 상태
+         * @return 검색된 파트너 회사 (Optional)
+         */
+        @Query("SELECT p FROM PartnerCompany p JOIN p.companyProfile cp " +
+                        "WHERE p.headquartersId = :headquartersId " +
+                        "AND LOWER(cp.corpName) = LOWER(:companyName) " +
+                        "AND p.status = :status")
+        Optional<PartnerCompany> findByHeadquartersIdAndCompanyNameIgnoreCaseAndStatus(
+                        @Param("headquartersId") Long headquartersId,
+                        @Param("companyName") String companyName,
+                        @Param("status") PartnerCompanyStatus status);
+
+        /**
+         * 특정 협력사의 회사명으로 파트너 회사를 검색합니다. (정확히 일치, 대소문자 구분 없음)
+         *
+         * @param partnerId   협력사 ID
+         * @param companyName 회사명 (정확히 일치)
+         * @param status      파트너 회사 상태
+         * @return 검색된 파트너 회사 (Optional)
+         */
+        @Query("SELECT p FROM PartnerCompany p JOIN p.companyProfile cp " +
+                        "WHERE p.partnerId = :partnerId " +
+                        "AND LOWER(cp.corpName) = LOWER(:companyName) " +
+                        "AND p.status = :status")
+        Optional<PartnerCompany> findByPartnerIdAndCompanyNameIgnoreCaseAndStatus(
+                        @Param("partnerId") Long partnerId,
+                        @Param("companyName") String companyName,
+                        @Param("status") PartnerCompanyStatus status);
+
 }
