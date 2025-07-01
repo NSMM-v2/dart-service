@@ -79,6 +79,10 @@ public class PartnerCompany {
     @Builder.Default
     private PartnerCompanyStatus status = PartnerCompanyStatus.ACTIVE;
 
+    @Column(name = "account_created", nullable = false)
+    @Builder.Default
+    private Boolean accountCreated = false; // 계정 생성 여부
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
@@ -110,5 +114,19 @@ public class PartnerCompany {
      */
     public Long getOwnerId() {
         return isHeadquartersOwned() ? headquartersId : partnerId;
+    }
+
+    /**
+     * 계정이 생성되었는지 확인
+     */
+    public boolean isAccountCreated() {
+        return accountCreated != null && accountCreated;
+    }
+
+    /**
+     * 계정 생성 상태를 업데이트
+     */
+    public void setAccountCreated(boolean accountCreated) {
+        this.accountCreated = accountCreated;
     }
 }

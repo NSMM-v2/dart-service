@@ -46,6 +46,9 @@ public class PartnerCompanyResponseDto {
     @Schema(description = "파트너사 정보 최종 수정 일시", example = "2023-01-01T10:00:00")
     private LocalDateTime updatedAt;
 
+    @Schema(description = "계정 생성 여부", example = "true")
+    private Boolean accountCreated;
+
     // ====================================================================
     // 소유자 정보
     // ====================================================================

@@ -336,4 +336,17 @@ public class PartnerCompanyApiController {
         }
 
         // ----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+        @PatchMapping("/partner-companies/{id}/account-created")
+        @Operation(summary = "계정 생성 상태 변경", description = "특정 파트너사의 accountCreated 값을 true로 변경합니다.")
+        @ApiResponses(value = {
+                        @ApiResponse(responseCode = "200", description = "계정 생성 상태가 성공적으로 변경되었습니다."),
+                        @ApiResponse(responseCode = "404", description = "해당 ID의 파트너사를 찾을 수 없습니다."),
+                        @ApiResponse(responseCode = "500", description = "서버 내부 오류")
+        })
+        public ResponseEntity<Void> setAccountCreatedTrue(@PathVariable String id) {
+                log.info("파트너사 계정 생성 상태 변경 요청 - ID: {}", id);
+                partnerCompanyApiService.updateAccountCreatedStatus(id, true);
+                return ResponseEntity.ok().build();
+        }
 }

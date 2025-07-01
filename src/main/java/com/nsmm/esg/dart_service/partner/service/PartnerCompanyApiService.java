@@ -479,6 +479,7 @@ public class PartnerCompanyApiService {
                 .contractStartDate(partnerCompany.getContractStartDate())
                 .createdAt(partnerCompany.getCreatedAt())
                 .updatedAt(partnerCompany.getUpdatedAt())
+                .accountCreated(partnerCompany.getAccountCreated())
                 // 소유자 정보
                 .headquartersId(partnerCompany.getHeadquartersId())
                 .partnerId(partnerCompany.getPartnerId())
@@ -619,5 +620,33 @@ public class PartnerCompanyApiService {
         return Map.of(
                 "isDuplicate", false,
                 "message", "사용 가능한 회사명입니다.");
+    }
+
+    /**
+     * ID로 파트너 회사 엔티티를 조회합니다.
+     */
+    public PartnerCompany findEntityById(String id) {
+        return partnerCompanyRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "ID '" + id + "'에 해당하는 파트너사를 찾을 수 없습니다."));
+    }
+
+    /**
+     * 파트너 회사 엔티티를 저장합니다.
+     */
+    public PartnerCompany save(PartnerCompany partnerCompany) {
+        return partnerCompanyRepository.save(partnerCompany);
+    }
+
+    /**
+     * 파트너 회사의 계정 생성 상태를 업데이트합니다.
+     */
+    @Transactional
+    public void updateAccountCreatedStatus(String id, boolean accountCreated) {
+        PartnerCompany partnerCompany = findEntityById(id);
+        partnerCompany.setAccountCreated(accountCreated);
+        partnerCompany.setUpdatedAt(LocalDateTime.now());
+        save(partnerCompany);
+        log.info("파트너사 계정 생성 상태 업데이트 완료 - ID: {}, accountCreated: {}", id, accountCreated);
     }
 }
