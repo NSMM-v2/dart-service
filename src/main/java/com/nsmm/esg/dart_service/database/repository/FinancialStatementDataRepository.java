@@ -7,6 +7,8 @@ package com.nsmm.esg.dart_service.database.repository;
 
 import com.nsmm.esg.dart_service.database.entity.FinancialStatementData;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -34,5 +36,18 @@ public interface FinancialStatementDataRepository extends JpaRepository<Financia
      * @return 삭제된 항목 수
      */
     long deleteByCorpCodeAndBsnsYearAndReprtCode(String corpCode, String bsnsYear, String reprtCode);
+
+    /**
+     * 특정 회사의 재무제표 데이터에서 고유한 연도/분기 조합과 항목 수를 조회합니다.
+     * 
+     * @param corpCode 회사 고유번호
+     * @return [사업연도, 보고서코드, 항목수] 형태의 Object 배열 리스트
+     */
+    @Query("SELECT f.bsnsYear, f.reprtCode, COUNT(f) " +
+            "FROM FinancialStatementData f " +
+            "WHERE f.corpCode = :corpCode " +
+            "GROUP BY f.bsnsYear, f.reprtCode " +
+            "ORDER BY f.bsnsYear DESC, f.reprtCode DESC")
+    List<Object[]> findDistinctYearAndReportByCorpCode(@Param("corpCode") String corpCode);
 
 }

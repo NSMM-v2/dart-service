@@ -21,10 +21,6 @@ public interface DartCorpCodeRepository extends JpaRepository<DartCorpCode, Stri
 
     List<DartCorpCode> findByCorpNameContainingIgnoreCase(String corpName);
 
-    Page<DartCorpCode> findByCorpNameContainingIgnoreCase(String corpName, Pageable pageable);
-    
-    Page<DartCorpCode> findByStockCodeIsNotNull(Pageable pageable);
-    
-    Page<DartCorpCode> findByCorpNameContainingIgnoreCaseAndStockCodeIsNotNull(String corpName, Pageable pageable);
+
 
 } 

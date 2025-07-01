@@ -25,6 +25,7 @@ import com.nsmm.esg.dart_service.partner.dto.PaginatedPartnerCompanyResponseDto;
 import com.nsmm.esg.dart_service.partner.dto.PartnerCompanyResponseDto;
 import com.nsmm.esg.dart_service.partner.dto.UpdatePartnerCompanyDto;
 import com.nsmm.esg.dart_service.partner.dto.FinancialRiskAssessmentDto;
+import com.nsmm.esg.dart_service.partner.dto.AvailablePeriodDto;
 import com.nsmm.esg.dart_service.partner.service.PartnerCompanyApiService;
 import com.nsmm.esg.dart_service.partner.service.PartnerFinancialRiskService;
 
@@ -213,27 +214,82 @@ public class PartnerCompanyApiController {
          * 파트너사 재무 위험 분석 (DB 기반)
          */
         @GetMapping("/partner-companies/{partnerCorpCode}/financial-risk")
-        @Operation(summary = "파트너사 재무 위험 분석 (DB 기반)", description = "내부 데이터베이스에 저장된 특정 파트너사의 재무제표 데이터를 기반으로 최근 4분기(1년) 기준으로 재무 위험을 분석합니다.")
+        @Operation(summary = "파트너사 재무 위험 분석 (DB 기반)", description = "내부 데이터베이스에 저장된 특정 파트너사의 재무제표 데이터를 기반으로 재무 위험을 분석합니다. 연도와 보고서 코드를 지정하지 않으면 최근 공시 기준으로 자동 선택됩니다.")
         @ApiResponses(value = {
                         @ApiResponse(responseCode = "200", description = "재무 위험 분석 결과입니다.", content = @Content(mediaType = "application/json", schema = @Schema(implementation = FinancialRiskAssessmentDto.class))),
+                        @ApiResponse(responseCode = "400", description = "잘못된 요청 파라미터 (예: 유효하지 않은 연도 또는 보고서 코드)"),
                         @ApiResponse(responseCode = "404", description = "파트너사 또는 해당 조건의 재무 데이터를 찾을 수 없습니다."),
                         @ApiResponse(responseCode = "500", description = "서버 내부 오류 또는 분석 중 오류 발생")
         })
         public ResponseEntity<FinancialRiskAssessmentDto> getFinancialRiskAssessment(
                         @Parameter(description = "재무 위험을 분석할 파트너사의 DART 고유번호 (8자리 숫자)", required = true, example = "00126380") @PathVariable String partnerCorpCode,
-                        @Parameter(description = "파트너사명 (결과 표시에 사용, 필수는 아님)") @RequestParam(required = false) String partnerName) {
 
-                log.info("파트너사 재무 위험 분석 요청 - corpCode: {}, partnerName: {}", partnerCorpCode, partnerName);
+                        @Parameter(description = "파트너사명 (결과 표시에 사용, 필수는 아님)") @RequestParam(required = false) String partnerName,
+
+                        @Parameter(description = "분석할 사업연도 (YYYY 형식, 미지정시 자동 선택)", example = "2023") @RequestParam(required = false) String bsnsYear,
+
+                        @Parameter(description = "분석할 보고서 코드 (11011: 사업보고서, 11012: 반기보고서, 11013: 1분기보고서, 11014: 3분기보고서, 미지정시 자동 선택)", example = "11011") @RequestParam(required = false) String reprtCode) {
+
+                log.info("파트너사 재무 위험 분석 요청 - corpCode: {}, partnerName: {}, bsnsYear: {}, reprtCode: {}",
+                                partnerCorpCode, partnerName, bsnsYear, reprtCode);
+                log.info("파라미터 상세 - bsnsYear null 여부: {}, reprtCode null 여부: {}", bsnsYear == null, reprtCode == null);
 
                 try {
-                        FinancialRiskAssessmentDto assessment = partnerFinancialRiskService
-                                        .assessFinancialRisk(partnerCorpCode, partnerName);
+                        FinancialRiskAssessmentDto assessment;
+
+                        // 연도나 보고서 코드가 지정된 경우 수동 분석, 아니면 자동 분석
+                        if (bsnsYear != null || reprtCode != null) {
+                                // 입력 검증 (값이 있는 경우만)
+                                if (bsnsYear != null && !isValidBsnsYear(bsnsYear)) {
+                                        throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                                                        "잘못된 사업연도 형식입니다. YYYY 형식으로 입력해주세요. (예: 2023)");
+                                }
+                                if (reprtCode != null && !isValidReprtCode(reprtCode)) {
+                                        throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                                                        "잘못된 보고서 코드입니다. 11011, 11012, 11013, 11014 중 하나를 입력해주세요.");
+                                }
+
+                                log.info("수동 지정 모드: 사업연도={}, 보고서코드={}", bsnsYear, reprtCode);
+                                assessment = partnerFinancialRiskService.assessFinancialRisk(partnerCorpCode,
+                                                partnerName, bsnsYear, reprtCode);
+                        } else {
+                                log.info("자동 선택 모드: 최신 공시 기준으로 분석");
+                                assessment = partnerFinancialRiskService.assessFinancialRisk(partnerCorpCode,
+                                                partnerName);
+                        }
+
                         return ResponseEntity.ok(assessment);
+                } catch (ResponseStatusException e) {
+                        throw e; // 이미 적절한 HTTP 상태 코드가 설정된 예외는 그대로 전파
                 } catch (Exception e) {
                         log.error("파트너사 재무 위험 분석 중 오류 발생 - corpCode: {}", partnerCorpCode, e);
                         throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
                                         "재무 위험 분석 중 오류가 발생했습니다: " + e.getMessage());
                 }
+        }
+
+        /**
+         * 사업연도 형식 검증 (YYYY)
+         */
+        private boolean isValidBsnsYear(String bsnsYear) {
+                if (bsnsYear == null || bsnsYear.length() != 4) {
+                        return false;
+                }
+                try {
+                        int year = Integer.parseInt(bsnsYear);
+                        return year >= 2000 && year <= 2030; // 합리적인 범위 내
+                } catch (NumberFormatException e) {
+                        return false;
+                }
+        }
+
+        /**
+         * 보고서 코드 검증
+         */
+        private boolean isValidReprtCode(String reprtCode) {
+                return reprtCode != null &&
+                                ("11011".equals(reprtCode) || "11012".equals(reprtCode) ||
+                                                "11013".equals(reprtCode) || "11014".equals(reprtCode));
         }
 
         // ----------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -255,6 +311,27 @@ public class PartnerCompanyApiController {
 
                 Map<String, Object> response = partnerCompanyApiService.checkCompanyNameDuplicate(companyName,
                                 excludeId);
+                return ResponseEntity.ok(response);
+        }
+
+        // ----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+        /**
+         * 특정 파트너사의 재무제표 데이터가 존재하는 연도/분기 조합 목록 조회
+         */
+        @GetMapping("/partner-companies/{partnerCorpCode}/available-periods")
+        @Operation(summary = "파트너사 재무제표 이용 가능 기간 조회", description = "특정 파트너사의 DB에 저장된 재무제표 데이터가 존재하는 연도/분기 조합 목록을 조회합니다.")
+        @ApiResponses(value = {
+                        @ApiResponse(responseCode = "200", description = "이용 가능한 기간 목록입니다.", content = @Content(mediaType = "application/json", schema = @Schema(type = "array", implementation = AvailablePeriodDto.class))),
+                        @ApiResponse(responseCode = "404", description = "파트너사의 재무제표 데이터를 찾을 수 없습니다."),
+                        @ApiResponse(responseCode = "500", description = "서버 내부 오류")
+        })
+        public ResponseEntity<java.util.List<AvailablePeriodDto>> getAvailablePeriods(
+                        @Parameter(description = "조회할 파트너사의 DART 고유번호 (8자리 숫자)", required = true, example = "00126380") @PathVariable String partnerCorpCode) {
+
+                log.info("파트너사 이용 가능 기간 조회 API 요청 - corpCode: {}", partnerCorpCode);
+                java.util.List<AvailablePeriodDto> response = partnerFinancialRiskService
+                                .getAvailablePeriods(partnerCorpCode);
                 return ResponseEntity.ok(response);
         }
 
