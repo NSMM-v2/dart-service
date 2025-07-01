@@ -22,11 +22,7 @@ import com.nsmm.esg.dart_service.database.repository.CompanyProfileRepository;
 import com.nsmm.esg.dart_service.database.repository.DartCorpCodeRepository;
 import com.nsmm.esg.dart_service.database.repository.DisclosureRepository;
 import com.nsmm.esg.dart_service.database.repository.FinancialStatementDataRepository;
-import com.nsmm.esg.dart_service.database.repository.PartnerCompanyRepository;
 import com.nsmm.esg.dart_service.partner.dto.PartnerCompanyKafkaMessage;
-import com.nsmm.esg.dart_service.partner.dto.PartnerCompanyResponseDto;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -48,7 +44,6 @@ import reactor.core.publisher.Mono;
 public class KafkaConsumerService {
 
     private final DartApiService dartApiService;
-    private final PartnerCompanyRepository partnerCompanyRepository;
     private final CompanyProfileRepository companyProfileRepository;
     private final DisclosureRepository disclosureRepository;
     private final FinancialStatementDataRepository financialStatementDataRepository;
@@ -58,7 +53,6 @@ public class KafkaConsumerService {
     private String dartApiKey;
 
     private static final String FS_DIV_OFS = "OFS";
-    private static final String[] REPORT_CODES_ANNUAL_QUARTERLY = { "11011", "11012", "11013", "11014" };
 
     /**
      * 회사 정보 토픽에서 메시지를 소비합니다.
