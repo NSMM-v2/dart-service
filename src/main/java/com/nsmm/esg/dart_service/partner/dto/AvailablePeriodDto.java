@@ -14,7 +14,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
  * 
  * @author ESG Project Team
  * @version 1.0
- * @since 2024
  */
 @Data
 @Builder

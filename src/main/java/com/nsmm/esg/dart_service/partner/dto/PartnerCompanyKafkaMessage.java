@@ -8,7 +8,6 @@
  * - Jackson 직렬화/역직렬화 지원
  * 
  * @author ESG Project Team
- * @since 2024
  */
 package com.nsmm.esg.dart_service.partner.dto;
 
