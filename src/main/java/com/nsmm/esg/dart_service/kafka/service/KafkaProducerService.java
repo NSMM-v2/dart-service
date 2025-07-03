@@ -51,7 +51,8 @@ public class KafkaProducerService {
         
         return future;
     }
-    
+    //------------------------------------------------------------------------------------------------------------------
+
     /**
      * 파트너사 복원 이벤트를 Kafka 토픽으로 전송합니다.
      *
@@ -61,9 +62,9 @@ public class KafkaProducerService {
      */
     public CompletableFuture<SendResult<String, Object>> sendPartnerRestoreEvent(String key, Object message) {
         log.info("파트너사 복원 이벤트 전송 - 키: {}, 메시지: {}", key, message);
-        
+
         CompletableFuture<SendResult<String, Object>> future = kafkaTemplate.send(partnerCompanyRestoreTopic, key, message);
-        
+
         future.whenComplete((result, ex) -> {
             if (ex == null) {
                 log.info("파트너사 복원 이벤트 전송 성공 - 토픽: {}, 파티션: {}, 오프셋: {}",
@@ -74,7 +75,8 @@ public class KafkaProducerService {
                 log.error("파트너사 복원 이벤트 전송 실패 - 키: {}", key, ex);
             }
         });
-        
+
         return future;
     }
+    //------------------------------------------------------------------------------------------------------------------
 } 

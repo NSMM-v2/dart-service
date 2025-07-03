@@ -166,25 +166,6 @@ public class DartApiController {
 
                 return dartApiService.getCompanyProfile(corpCode)
                                 .map(profile -> {
-                                        log.info("[DEBUG] DART API 응답 성공: corpCode={}", corpCode);
-                                        log.info("[DEBUG] 응답 상태: {}", profile.getStatus());
-                                        log.info("[DEBUG] 회사명: {}", profile.getCorpName());
-                                        log.info("[DEBUG] 영문회사명: {}", profile.getCorpNameEng());
-                                        log.info("[DEBUG] 종목코드: {}", profile.getStockCode());
-                                        log.info("[DEBUG] 종목명: {}", profile.getStockName());
-                                        log.info("[DEBUG] 업종코드: {}", profile.getIndustryCode());
-                                        log.info("[DEBUG] 대표자명: {}", profile.getCeoName());
-                                        log.info("[DEBUG] 법인구분: {}", profile.getCorpClass());
-                                        log.info("[DEBUG] 사업자등록번호: {}", profile.getBusinessNumber());
-                                        log.info("[DEBUG] 법인등록번호: {}", profile.getCorporateRegistrationNumber());
-                                        log.info("[DEBUG] 주소: {}", profile.getAddress());
-                                        log.info("[DEBUG] 홈페이지: {}", profile.getHomepageUrl());
-                                        log.info("[DEBUG] IR URL: {}", profile.getIrUrl());
-                                        log.info("[DEBUG] 전화번호: {}", profile.getPhoneNumber());
-                                        log.info("[DEBUG] 팩스번호: {}", profile.getFaxNumber());
-                                        log.info("[DEBUG] 설립일: {}", profile.getEstablishmentDate());
-                                        log.info("[DEBUG] 결산월: {}", profile.getAccountingMonth());
-
                                         String debugInfo = String.format(
                                                         "DEBUG INFO - corpCode: %s, status: %s, corpName: %s, stockName: %s, industryCode: %s",
                                                         corpCode, profile.getStatus(), profile.getCorpName(),

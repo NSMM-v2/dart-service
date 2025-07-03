@@ -90,6 +90,7 @@ public class PartnerCompanyApiService {
                 .doOnError(e -> log.error("파트너 API 호출 실패: {}", e.getMessage()))
                 .block();
     }
+    //------------------------------------------------------------------------------------------------------------------
 
     /**
      * 파트너 API에서 회사의 재무 정보를 조회합니다.
@@ -116,6 +117,7 @@ public class PartnerCompanyApiService {
                 .doOnError(e -> log.error("파트너 API 호출 실패: {}", e.getMessage()))
                 .block();
     }
+    //------------------------------------------------------------------------------------------------------------------
 
     /**
      * 새로운 파트너 회사를 생성합니다.
@@ -231,6 +233,8 @@ public class PartnerCompanyApiService {
 
         return mapToResponseDto(savedPartner, false);
     }
+    //------------------------------------------------------------------------------------------------------------------
+
 
     /**
      * CompanyProfile을 조회하거나 DartCorpCode에서 생성합니다.
@@ -300,6 +304,7 @@ public class PartnerCompanyApiService {
 
         return savedProfile;
     }
+    //------------------------------------------------------------------------------------------------------------------
 
     /**
      * Kafka 메시지를 발행합니다.
@@ -326,6 +331,7 @@ public class PartnerCompanyApiService {
             log.error("Kafka 메시지 발행 중 예외 발생 - corpCode: {}, 오류: {}", corpCode, e.getMessage());
         }
     }
+    //------------------------------------------------------------------------------------------------------------------
 
     /**
      * 모든 파트너 회사 목록을 조회합니다.
@@ -363,6 +369,7 @@ public class PartnerCompanyApiService {
                 .pageSize(validPageSize)
                 .build();
     }
+    //------------------------------------------------------------------------------------------------------------------
 
     /**
      * 특정 파트너 회사를 조회합니다.
@@ -380,6 +387,7 @@ public class PartnerCompanyApiService {
 
         return mapToResponseDto(partnerCompany);
     }
+    //------------------------------------------------------------------------------------------------------------------
 
     /**
      * 파트너 회사 정보를 업데이트합니다.
@@ -424,6 +432,7 @@ public class PartnerCompanyApiService {
         log.info("파트너 회사 정보 업데이트 완료 - ID: {}", updatedPartner.getId());
         return mapToResponseDto(updatedPartner);
     }
+    //------------------------------------------------------------------------------------------------------------------
 
     /**
      * 파트너 회사를 삭제합니다. (INACTIVE 상태로 변경)
@@ -446,6 +455,7 @@ public class PartnerCompanyApiService {
         log.info("파트너 회사 비활성화 완료 - ID: {}", id);
         return Map.of("message", "파트너사가 성공적으로 비활성화되었습니다.", "id", id);
     }
+    //------------------------------------------------------------------------------------------------------------------
 
     /**
      * 파트너 회사 엔티티를 응답 DTO로 변환합니다.
@@ -456,6 +466,7 @@ public class PartnerCompanyApiService {
     private PartnerCompanyResponseDto mapToResponseDto(PartnerCompany partnerCompany) {
         return mapToResponseDto(partnerCompany, false);
     }
+    //------------------------------------------------------------------------------------------------------------------
 
     /**
      * 파트너 회사 엔티티를 응답 DTO로 변환합니다. (복원 플래그 포함)
@@ -503,6 +514,7 @@ public class PartnerCompanyApiService {
                 .companyProfileUpdatedAt(profile != null ? profile.getUpdatedAt() : null)
                 .build();
     }
+    //------------------------------------------------------------------------------------------------------------------
 
     /**
      * 특정 본사/협력사의 파트너 회사 목록을 조회합니다.
@@ -560,6 +572,7 @@ public class PartnerCompanyApiService {
                 .pageSize(validPageSize)
                 .build();
     }
+    //------------------------------------------------------------------------------------------------------------------
 
     /**
      * 시스템에 등록된 모든 활성 상태의 파트너사들의 고유한 회사명 목록을 조회합니다.
@@ -576,6 +589,7 @@ public class PartnerCompanyApiService {
                 .distinct()
                 .collect(Collectors.toList());
     }
+    //------------------------------------------------------------------------------------------------------------------
 
     /**
      * 협력사 회사명 중복 검사를 수행합니다.
@@ -620,6 +634,7 @@ public class PartnerCompanyApiService {
                 "isDuplicate", false,
                 "message", "사용 가능한 회사명입니다.");
     }
+    //------------------------------------------------------------------------------------------------------------------
 
     /**
      * ID로 파트너 회사 엔티티를 조회합니다.
@@ -629,6 +644,7 @@ public class PartnerCompanyApiService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
                         "ID '" + id + "'에 해당하는 파트너사를 찾을 수 없습니다."));
     }
+    //------------------------------------------------------------------------------------------------------------------
 
     /**
      * 파트너 회사 엔티티를 저장합니다.
@@ -636,6 +652,7 @@ public class PartnerCompanyApiService {
     public PartnerCompany save(PartnerCompany partnerCompany) {
         return partnerCompanyRepository.save(partnerCompany);
     }
+    //------------------------------------------------------------------------------------------------------------------
 
     /**
      * 파트너 회사의 계정 생성 상태를 업데이트합니다.
@@ -648,4 +665,5 @@ public class PartnerCompanyApiService {
         save(partnerCompany);
         log.info("파트너사 계정 생성 상태 업데이트 완료 - ID: {}, accountCreated: {}", id, accountCreated);
     }
+    //------------------------------------------------------------------------------------------------------------------
 }

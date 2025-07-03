@@ -52,6 +52,7 @@ public class PartnerCompanyApiController {
         private final PartnerCompanyApiService partnerCompanyApiService;
         private final PartnerFinancialRiskService partnerFinancialRiskService;
 
+        // 파트너사 외부 시스템 회사 정보 조회
         @GetMapping("/companies/{companyId}")
         @Operation(summary = "파트너사 외부 시스템 회사 정보 조회", description = "파트너사 외부 시스템 API를 통해 특정 회사 정보를 조회합니다. (주의: 현재 서비스의 파트너사 DB와는 별개)")
         @ApiResponses(value = {
@@ -66,7 +67,9 @@ public class PartnerCompanyApiController {
                 Map<String, Object> response = partnerCompanyApiService.getCompanyInfo(companyId);
                 return ResponseEntity.ok(response);
         }
+        // --------------------------------------------------------------------------------------------------------------------------------------------
 
+        // 파트너사 외부 시스템 재무 정보 조회
         @GetMapping("/companies/{companyId}/financials")
         @Operation(summary = "파트너사 외부 시스템 재무 정보 조회", description = "파트너사 외부 시스템 API를 통해 특정 회사의 특정 연도, 분기 재무 정보를 조회합니다. (주의: 현재 서비스의 파트너사 DB와는 별개)")
         @ApiResponses(value = {
@@ -86,9 +89,9 @@ public class PartnerCompanyApiController {
                 Map<String, Object> response = partnerCompanyApiService.getFinancialInfo(companyId, year, quarter);
                 return ResponseEntity.ok(response);
         }
+        // --------------------------------------------------------------------------------------------------------------------------------------------
 
         // 파트너 회사 CRUD 엔드포인트
-
         @PostMapping("/partner-companies")
         @Operation(summary = "신규 파트너사 등록", description = "새로운 파트너사를 시스템에 등록합니다. 등록 시 DART API를 통해 추가 정보를 조회하여 저장하며, Kafka로 파트너사 등록 이벤트를 발행합니다.")
         @ApiResponses(value = {
@@ -109,7 +112,9 @@ public class PartnerCompanyApiController {
                                 headquartersId, partnerId, hqAccountNumber);
                 return ResponseEntity.status(HttpStatus.CREATED).body(response);
         }
+        // --------------------------------------------------------------------------------------------------------------------------------------------
 
+        // 파트너사 목록 조회 (페이지네이션)
         @GetMapping("/partner-companies")
         @Operation(summary = "조직별 파트너사 목록 조회 (페이지네이션)", description = "본사/협력사별로 등록한 활성(ACTIVE) 상태의 파트너사 목록을 페이지네이션하여 조회합니다. 회사명으로 필터링할 수 있습니다.")
         @ApiResponses(value = {
@@ -139,9 +144,9 @@ public class PartnerCompanyApiController {
                                                 validPageSize, companyName);
                 return ResponseEntity.ok(response);
         }
-
         // --------------------------------------------------------------------------------------------------------------------------------------------
 
+        // 모든 고유 파트너사명 목록 조회
         @GetMapping("/unique-partner-companies")
         @Operation(summary = "모든 고유 파트너사명 목록 조회", description = "시스템에 등록된 모든 활성(ACTIVE) 상태의 파트너사들의 고유한 회사명 목록을 조회합니다. 사용자 ID와 무관합니다.")
         @ApiResponses(value = {
@@ -155,6 +160,7 @@ public class PartnerCompanyApiController {
         }
         // ----------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
+        // 특정 파트너사 상세 조회 (ID)
         @GetMapping("/partner-companies/{id}")
         @Operation(summary = "특정 파트너사 상세 조회 (ID)", description = "시스템에 등록된 특정 파트너사의 상세 정보를 ID(UUID)를 이용하여 조회합니다. 활성(ACTIVE) 상태의 파트너사만 조회됩니다.")
         @ApiResponses(value = {
@@ -171,6 +177,7 @@ public class PartnerCompanyApiController {
         }
         // ----------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
+        // 특정 파트너사 정보 수정 (ID)
         @PatchMapping("/partner-companies/{id}")
         @Operation(summary = "특정 파트너사 정보 수정 (ID)", description = "시스템에 등록된 특정 파트너사의 정보를 ID(UUID)를 이용하여 수정합니다. 계약 관련 정보만 수정 가능합니다.")
         @ApiResponses(value = {
@@ -192,6 +199,7 @@ public class PartnerCompanyApiController {
         }
         // ----------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
+        // 특정 파트너사 삭제 (소프트 삭제)
         @DeleteMapping("/partner-companies/{id}")
         @Operation(summary = "특정 파트너사 삭제 (ID, 소프트 삭제)", description = "시스템에 등록된 특정 파트너사를 논리적으로 삭제합니다 (상태를 INACTIVE로 변경).")
         @ApiResponses(value = {
@@ -210,9 +218,7 @@ public class PartnerCompanyApiController {
         }
         // ----------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-        /**
-         * 파트너사 재무 위험 분석 (DB 기반)
-         */
+        // 파트너사 재무 위험 분석 (DB 기반)
         @GetMapping("/partner-companies/{partnerCorpCode}/financial-risk")
         @Operation(summary = "파트너사 재무 위험 분석 (DB 기반)", description = "내부 데이터베이스에 저장된 특정 파트너사의 재무제표 데이터를 기반으로 재무 위험을 분석합니다. 연도와 보고서 코드를 지정하지 않으면 최근 공시 기준으로 자동 선택됩니다.")
         @ApiResponses(value = {
@@ -268,30 +274,6 @@ public class PartnerCompanyApiController {
                 }
         }
 
-        /**
-         * 사업연도 형식 검증 (YYYY)
-         */
-        private boolean isValidBsnsYear(String bsnsYear) {
-                if (bsnsYear == null || bsnsYear.length() != 4) {
-                        return false;
-                }
-                try {
-                        int year = Integer.parseInt(bsnsYear);
-                        return year >= 2000 && year <= 2030; // 합리적인 범위 내
-                } catch (NumberFormatException e) {
-                        return false;
-                }
-        }
-
-        /**
-         * 보고서 코드 검증
-         */
-        private boolean isValidReprtCode(String reprtCode) {
-                return reprtCode != null &&
-                                ("11011".equals(reprtCode) || "11012".equals(reprtCode) ||
-                                                "11013".equals(reprtCode) || "11014".equals(reprtCode));
-        }
-
         // ----------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
         // 파트너 회사명 중복 확인 컨트롤러
@@ -316,9 +298,7 @@ public class PartnerCompanyApiController {
 
         // ----------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-        /**
-         * 특정 파트너사의 재무제표 데이터가 존재하는 연도/분기 조합 목록 조회
-         */
+        // 특정 파트너사의 재무제표 데이터가 존재하는 연도/분기 조합 목록 조회
         @GetMapping("/partner-companies/{partnerCorpCode}/available-periods")
         @Operation(summary = "파트너사 재무제표 이용 가능 기간 조회", description = "특정 파트너사의 DB에 저장된 재무제표 데이터가 존재하는 연도/분기 조합 목록을 조회합니다.")
         @ApiResponses(value = {
@@ -337,6 +317,7 @@ public class PartnerCompanyApiController {
 
         // ----------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
+        // 파트너사 계정 생성 상태 변경 (accountCreated)
         @PatchMapping("/partner-companies/{id}/account-created")
         @Operation(summary = "계정 생성 상태 변경", description = "특정 파트너사의 accountCreated 값을 true로 변경합니다.")
         @ApiResponses(value = {
@@ -349,4 +330,26 @@ public class PartnerCompanyApiController {
                 partnerCompanyApiService.updateAccountCreatedStatus(id, true);
                 return ResponseEntity.ok().build();
         }
+        // --------------------------------------------------------------------------------------------------------------------------------------------
+
+        // 사업연도 형식 검증 (YYYY)
+        private boolean isValidBsnsYear(String bsnsYear) {
+                if (bsnsYear == null || bsnsYear.length() != 4) {
+                        return false;
+                }
+                try {
+                        int year = Integer.parseInt(bsnsYear);
+                        return year >= 2000 && year <= 2030; // 합리적인 범위 내
+                } catch (NumberFormatException e) {
+                        return false;
+                }
+        }
+
+        // 보고서 코드 검증 (11011, 11012, 11013, 11014 중 하나)
+        private boolean isValidReprtCode(String reprtCode) {
+                return reprtCode != null &&
+                        ("11011".equals(reprtCode) || "11012".equals(reprtCode) ||
+                                "11013".equals(reprtCode) || "11014".equals(reprtCode));
+        }
+
 }
