@@ -91,41 +91,7 @@ public class PartnerCompany {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
-    // ========================================================================
-    // 편의 메서드
-    // ========================================================================
-
-    /**
-     * 본사가 등록한 협력사인지 확인
-     */
-    public boolean isHeadquartersOwned() {
-        return "HEADQUARTERS".equals(userType) && headquartersId != null;
-    }
-
-    /**
-     * 협력사가 등록한 하위 협력사인지 확인
-     */
-    public boolean isPartnerOwned() {
-        return "PARTNER".equals(userType) && partnerId != null;
-    }
-
-    /**
-     * 소유자 ID 반환 (userType에 따라)
-     */
-    public Long getOwnerId() {
-        return isHeadquartersOwned() ? headquartersId : partnerId;
-    }
-
-    /**
-     * 계정이 생성되었는지 확인
-     */
-    public boolean isAccountCreated() {
-        return accountCreated != null && accountCreated;
-    }
-
-    /**
-     * 계정 생성 상태를 업데이트
-     */
+    // 계정 생성 상태를 업데이트
     public void setAccountCreated(boolean accountCreated) {
         this.accountCreated = accountCreated;
     }

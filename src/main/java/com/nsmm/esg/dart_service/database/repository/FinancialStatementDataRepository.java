@@ -27,15 +27,6 @@ public interface FinancialStatementDataRepository extends JpaRepository<Financia
     List<FinancialStatementData> findByCorpCodeAndBsnsYearAndReprtCode(String corpCode, String bsnsYear,
             String reprtCode);
 
-    /**
-     * 회사 코드, 사업연도, 보고서 코드로 재무제표 항목들을 삭제합니다.
-     *
-     * @param corpCode  회사 고유번호
-     * @param bsnsYear  사업 연도
-     * @param reprtCode 보고서 코드
-     * @return 삭제된 항목 수
-     */
-    long deleteByCorpCodeAndBsnsYearAndReprtCode(String corpCode, String bsnsYear, String reprtCode);
 
     /**
      * 특정 회사의 재무제표 데이터에서 고유한 연도/분기 조합과 항목 수를 조회합니다.

@@ -141,28 +141,4 @@ public class CompanyProfile {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
-    // ========================================================================
-    // 편의 메서드
-    // ========================================================================
-
-    /**
-     * 본사가 등록한 회사인지 확인
-     */
-    public boolean isHeadquartersOwned() {
-        return "HEADQUARTERS".equals(userType) && headquartersId != null;
-    }
-
-    /**
-     * 협력사가 등록한 회사인지 확인
-     */
-    public boolean isPartnerOwned() {
-        return "PARTNER".equals(userType) && partnerId != null;
-    }
-
-    /**
-     * 소유자 ID 반환 (userType에 따라)
-     */
-    public Long getOwnerId() {
-        return isHeadquartersOwned() ? headquartersId : partnerId;
-    }
 }
