@@ -17,9 +17,9 @@ import java.util.List;
 @Schema(description = "파트너사의 재무 위험 분석 결과를 담는 DTO")
 public class FinancialRiskAssessmentDto {
 
-    @Schema(description = "파트너사의 DART 고유번호 (8자리)", example = "00126380")
+    @Schema(description = "협력사의 DART 고유번호 (8자리)", example = "00126380")
     private String partnerCompanyId;
-    @Schema(description = "파트너 회사명", example = "주식회사 테스트파트너")
+    @Schema(description = "협력 회사명", example = "주식회사 테스트협력")
     private String partnerCompanyName;
     @Schema(description = "분석 기준 사업연도 (YYYY 형식)", example = "2023")
     private String assessmentYear;

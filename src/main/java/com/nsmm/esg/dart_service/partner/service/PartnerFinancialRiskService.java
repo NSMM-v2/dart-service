@@ -42,11 +42,11 @@ public class PartnerFinancialRiskService {
     private static final String ACC_LONG_TERM_BORROWINGS = "장기차입금"; // ifrs-full_LongtermBorrowings
 
     /**
-     * 파트너사 재무 위험 분석 (자동 최신 분기 기준)
+     * 협력사 재무 위험 분석 (자동 최신 분기 기준)
      * 현재 날짜를 기준으로 가장 최근 공시된 재무제표를 자동 선택하여 분석합니다.
      */
     public FinancialRiskAssessmentDto assessFinancialRisk(String partnerCorpCode, String partnerName) {
-        log.info("파트너사 재무 위험 분석 요청 (DB 조회, 최근 4분기 기준): 회사코드={}, 회사명={}",
+        log.info("협력사 재무 위험 분석 요청 (DB 조회, 최근 4분기 기준): 회사코드={}, 회사명={}",
                 partnerCorpCode, partnerName);
 
         // 현재 연도와 최근 보고서 코드 자동 결정
@@ -79,18 +79,18 @@ public class PartnerFinancialRiskService {
     }
 
     /**
-     * 파트너사 재무 위험 분석 (수동 연도/분기 지정)
+     * 협력사 재무 위험 분석 (수동 연도/분기 지정)
      * 사용자가 지정한 연도와 보고서 코드를 사용하여 분석합니다.
      * 
-     * @param partnerCorpCode 파트너사 DART 코드
-     * @param partnerName     파트너사명
+     * @param partnerCorpCode 협력사 DART 코드
+     * @param partnerName     협력사명
      * @param bsnsYear        분석할 사업연도 (YYYY)
      * @param reprtCode       분석할 보고서 코드 (11011, 11012, 11013, 11014)
      * @return 재무 위험 분석 결과
      */
     public FinancialRiskAssessmentDto assessFinancialRisk(String partnerCorpCode, String partnerName,
             String bsnsYear, String reprtCode) {
-        log.info("파트너사 재무 위험 분석 요청 (수동 지정): 회사코드={}, 회사명={}, 사업연도={}, 보고서코드={}",
+        log.info("협력사 재무 위험 분석 요청 (수동 지정): 회사코드={}, 회사명={}, 사업연도={}, 보고서코드={}",
                 partnerCorpCode, partnerName, bsnsYear, reprtCode);
 
         return assessFinancialRiskWithParams(partnerCorpCode, partnerName, bsnsYear, reprtCode);
@@ -154,7 +154,7 @@ public class PartnerFinancialRiskService {
                 .add(convertToNumberedResult(checkDebtToEquityRatio(financialStatementItems), 11, "부채비율 200% 이상"));
         riskItemsResult.add(convertToNumberedResult(checkCapitalImpairment(financialStatementItems), 12, "납입자본금 잠식"));
 
-        log.info("파트너사 재무 위험 분석 완료 (DB 기반): 회사명={}, 사업연도={}, 보고서코드={}", partnerName, bsnsYear, reprtCode);
+        log.info("협력사 재무 위험 분석 완료 (DB 기반): 회사명={}, 사업연도={}, 보고서코드={}", partnerName, bsnsYear, reprtCode);
         return FinancialRiskAssessmentDto.builder()
                 .partnerCompanyId(partnerCorpCode)
                 .partnerCompanyName(partnerName)
@@ -500,20 +500,20 @@ public class PartnerFinancialRiskService {
     }
 
     /**
-     * 특정 파트너사의 재무제표 데이터가 존재하는 연도/분기 조합 목록을 조회합니다.
+     * 특정 협력사의 재무제표 데이터가 존재하는 연도/분기 조합 목록을 조회합니다.
      * 
-     * @param partnerCorpCode 파트너사 DART 코드
+     * @param partnerCorpCode 협력사 DART 코드
      * @return 이용 가능한 기간 목록 (최신순으로 정렬)
      */
     public List<AvailablePeriodDto> getAvailablePeriods(String partnerCorpCode) {
-        log.info("파트너사 이용 가능 기간 조회: 회사코드={}", partnerCorpCode);
+        log.info("협력사 이용 가능 기간 조회: 회사코드={}", partnerCorpCode);
 
         // DB에서 해당 회사의 고유한 연도/분기 조합 조회
         List<Object[]> rawResults = financialStatementDataRepository
                 .findDistinctYearAndReportByCorpCode(partnerCorpCode);
 
         if (rawResults == null || rawResults.isEmpty()) {
-            log.warn("파트너사 {}에 대한 재무제표 데이터가 존재하지 않습니다.", partnerCorpCode);
+            log.warn("협력사 {}에 대한 재무제표 데이터가 존재하지 않습니다.", partnerCorpCode);
             return new java.util.ArrayList<>();
         }
 
@@ -569,7 +569,7 @@ public class PartnerFinancialRiskService {
                 })
                 .collect(Collectors.toList());
 
-        log.info("파트너사 {} - 이용 가능한 기간 {}개 조회 완료", partnerCorpCode, result.size());
+        log.info("협력사 {} - 이용 가능한 기간 {}개 조회 완료", partnerCorpCode, result.size());
         return result;
     }
 }

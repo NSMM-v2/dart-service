@@ -1,7 +1,7 @@
 /**
  * @file CreatePartnerCompanyDto.java
- * @description 새 파트너사 등록 요청 시 사용되는 DTO입니다.
- *              DART 기업 고유 코드를 통해 CompanyProfile에서 회사 정보를 조회하여 파트너사를 등록합니다.
+ * @description 새 협력사 등록 요청 시 사용되는 DTO입니다.
+ *              DART 기업 고유 코드를 통해 CompanyProfile에서 회사 정보를 조회하여 협력사를 등록합니다.
  *              회사명, 주식 코드 등 상세 정보는 CompanyProfile에서 자동으로 가져옵니다.
  */
 package com.nsmm.esg.dart_service.partner.dto;
@@ -23,7 +23,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Schema(description = "신규 파트너사 등록 요청 시 사용되는 DTO. 회사 정보는 CompanyProfile에서 자동 조회됩니다.")
+@Schema(description = "신규 협력사 등록 요청 시 사용되는 DTO. 회사 정보는 CompanyProfile에서 자동 조회됩니다.")
 public class CreatePartnerCompanyDto {
 
     @NotBlank(message = "DART 기업 고유 코드는 필수 입력 항목입니다.")
@@ -33,7 +33,7 @@ public class CreatePartnerCompanyDto {
 
     @DateTimeFormat(pattern = "yyyy-MM-dd")
     @NotNull(message = "계약 시작일은 필수 입력 항목입니다.")
-    @Schema(description = "파트너사와의 계약 시작일 (YYYY-MM-DD 형식)", example = "2023-01-01", requiredMode = Schema.RequiredMode.REQUIRED)
+    @Schema(description = "협력사와의 계약 시작일 (YYYY-MM-DD 형식)", example = "2023-01-01", requiredMode = Schema.RequiredMode.REQUIRED)
     private LocalDate contractStartDate;
 
     // ====================================================================

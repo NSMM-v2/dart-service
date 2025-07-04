@@ -1,7 +1,7 @@
 /**
  * @file PartnerCompanyApiService.java
- * @description 파트너 회사 API와 통신하기 위한 서비스입니다.
- *              파트너 회사 정보의 CRUD 기능을 제공하며, CompanyProfile과의 연관관계를 통해 회사 정보를 관리합니다.
+ * @description 협력 회사 API와 통신하기 위한 서비스입니다.
+ *              협력 회사 정보의 CRUD 기능을 제공하며, CompanyProfile과의 연관관계를 통해 회사 정보를 관리합니다.
  */
 package com.nsmm.esg.dart_service.partner.service;
 
@@ -69,14 +69,14 @@ public class PartnerCompanyApiService {
     private final KafkaProducerService kafkaProducerService;
 
     /**
-     * 파트너 API에서 회사 정보를 조회합니다.
+     * 협력 API에서 회사 정보를 조회합니다.
      * 
      * @param companyId 회사 ID
      * @return 회사 정보
      */
     @SuppressWarnings("unchecked")
     public Map<String, Object> getCompanyInfo(String companyId) {
-        log.info("파트너 API 호출 - 회사 정보 조회: {}", companyId);
+        log.info("협력 API 호출 - 회사 정보 조회: {}", companyId);
 
         return webClientBuilder.baseUrl(baseUrl)
                 .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
@@ -87,13 +87,13 @@ public class PartnerCompanyApiService {
                 .uri("/companies/{companyId}", companyId)
                 .retrieve()
                 .bodyToMono(Map.class)
-                .doOnError(e -> log.error("파트너 API 호출 실패: {}", e.getMessage()))
+                .doOnError(e -> log.error("협력 API 호출 실패: {}", e.getMessage()))
                 .block();
     }
     //------------------------------------------------------------------------------------------------------------------
 
     /**
-     * 파트너 API에서 회사의 재무 정보를 조회합니다.
+     * 협력 API에서 회사의 재무 정보를 조회합니다.
      * 
      * @param companyId 회사 ID
      * @param year      조회 연도
@@ -102,7 +102,7 @@ public class PartnerCompanyApiService {
      */
     @SuppressWarnings("unchecked")
     public Map<String, Object> getFinancialInfo(String companyId, int year, int quarter) {
-        log.info("파트너 API 호출 - 재무 정보 조회: {}, {}년 {}분기", companyId, year, quarter);
+        log.info("협력 API 호출 - 재무 정보 조회: {}, {}년 {}분기", companyId, year, quarter);
 
         return webClientBuilder.baseUrl(baseUrl)
                 .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
@@ -114,24 +114,24 @@ public class PartnerCompanyApiService {
                         companyId, year, quarter)
                 .retrieve()
                 .bodyToMono(Map.class)
-                .doOnError(e -> log.error("파트너 API 호출 실패: {}", e.getMessage()))
+                .doOnError(e -> log.error("협력 API 호출 실패: {}", e.getMessage()))
                 .block();
     }
     //------------------------------------------------------------------------------------------------------------------
 
     /**
-     * 새로운 파트너 회사를 생성합니다.
+     * 새로운 협력 회사를 생성합니다.
      * 
-     * @param createDto       생성할 파트너 회사 정보
+     * @param createDto       생성할 협력 회사 정보
      * @param headquartersId  본사 ID (게이트웨이 헤더 X-HEADQUARTERS-ID)
      * @param partnerId       협력사 사용자 ID (게이트웨이 헤더 X-PARTNER-ID, 선택사항)
      * @param hqAccountNumber 본사 계정 번호
-     * @return 생성된 파트너 회사 정보
+     * @return 생성된 협력 회사 정보
      */
     @Transactional
     public PartnerCompanyResponseDto createPartnerCompany(CreatePartnerCompanyDto createDto,
             Long headquartersId, Long partnerId, String hqAccountNumber) {
-        log.info("파트너 회사 생성 요청 - corpCode: {}, 본사 ID: {}, 협력사 ID: {}",
+        log.info("협력 회사 생성 요청 - corpCode: {}, 본사 ID: {}, 협력사 ID: {}",
                 createDto.getCorpCode(), headquartersId, partnerId);
 
         // 1. CompanyProfile 존재 여부 확인 또는 생성
@@ -157,7 +157,7 @@ public class PartnerCompanyApiService {
         }
 
         if (activePartner.isPresent()) {
-            log.info("동일한 본사/협력사에서 이미 등록된 파트너사 정보 반환 - 회사명: {}, 본사ID: {}, 협력사ID: {}",
+            log.info("동일한 본사/협력사에서 이미 등록된 협력사 정보 반환 - 회사명: {}, 본사ID: {}, 협력사ID: {}",
                     companyProfile.getCorpName(), headquartersId, partnerId);
             return mapToResponseDto(activePartner.get(), false);
         }
@@ -177,7 +177,7 @@ public class PartnerCompanyApiService {
         }
 
         if (inactivePartner.isPresent()) {
-            log.info("INACTIVE 상태의 기존 파트너사 발견 - 복원 처리: {}", companyProfile.getCorpName());
+            log.info("INACTIVE 상태의 기존 협력사 발견 - 복원 처리: {}", companyProfile.getCorpName());
             PartnerCompany existingPartner = inactivePartner.get();
 
             // 실제 요청자 타입 결정
@@ -196,7 +196,7 @@ public class PartnerCompanyApiService {
             existingPartner.setUpdatedAt(LocalDateTime.now());
 
             PartnerCompany restoredPartner = partnerCompanyRepository.save(existingPartner);
-            log.info("파트너사 복원 완료 - ID: {}", restoredPartner.getId());
+            log.info("협력사 복원 완료 - ID: {}", restoredPartner.getId());
 
             // Kafka 메시지 발행 (복원 이벤트)
             publishPartnerCompanyKafkaMessage(createDto.getCorpCode());
@@ -204,7 +204,7 @@ public class PartnerCompanyApiService {
             return mapToResponseDto(restoredPartner, true);
         }
 
-        // 4. 새로운 파트너 회사 생성
+        // 4. 새로운 협력 회사 생성
         String newId = UUID.randomUUID().toString();
 
         // 실제 요청자 타입 결정
@@ -226,7 +226,7 @@ public class PartnerCompanyApiService {
                 .build();
 
         PartnerCompany savedPartner = partnerCompanyRepository.save(newPartner);
-        log.info("새로운 파트너사 생성 완료 - ID: {}, 회사명: {}", savedPartner.getId(), companyProfile.getCorpName());
+        log.info("새로운 협력사 생성 완료 - ID: {}, 회사명: {}", savedPartner.getId(), companyProfile.getCorpName());
 
         // Kafka 메시지 발행
         publishPartnerCompanyKafkaMessage(createDto.getCorpCode());
@@ -334,16 +334,16 @@ public class PartnerCompanyApiService {
     //------------------------------------------------------------------------------------------------------------------
 
     /**
-     * 모든 파트너 회사 목록을 조회합니다.
+     * 모든 협력 회사 목록을 조회합니다.
      * 
      * @param page        페이지 번호 (1부터 시작)
      * @param pageSize    페이지당 항목 수
      * @param companyName 회사명 필터 (부분 일치)
-     * @return 페이지네이션을 포함한 파트너 회사 목록
+     * @return 페이지네이션을 포함한 협력 회사 목록
      */
     @Transactional(readOnly = true)
     public PaginatedPartnerCompanyResponseDto findAllPartnerCompanies(int page, int pageSize, String companyName) {
-        log.info("모든 파트너 회사 목록 조회 요청 - 페이지: {}, 페이지 크기: {}, 회사명 필터: {}", page, pageSize, companyName);
+        log.info("모든 협력 회사 목록 조회 요청 - 페이지: {}, 페이지 크기: {}, 회사명 필터: {}", page, pageSize, companyName);
 
         int validPage = Math.max(1, page);
         int validPageSize = Math.max(1, Math.min(100, pageSize));
@@ -372,37 +372,37 @@ public class PartnerCompanyApiService {
     //------------------------------------------------------------------------------------------------------------------
 
     /**
-     * 특정 파트너 회사를 조회합니다.
+     * 특정 협력 회사를 조회합니다.
      * 
-     * @param id 파트너 회사 ID
-     * @return 파트너 회사 정보
+     * @param id 협력 회사 ID
+     * @return 협력 회사 정보
      */
     @Transactional(readOnly = true)
     public PartnerCompanyResponseDto findPartnerCompanyById(String id) {
-        log.info("파트너 회사 ID로 조회 요청 - ID: {}", id);
+        log.info("협력 회사 ID로 조회 요청 - ID: {}", id);
 
         PartnerCompany partnerCompany = partnerCompanyRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                        "ID '" + id + "'에 해당하는 파트너사를 찾을 수 없습니다."));
+                        "ID '" + id + "'에 해당하는 협력사를 찾을 수 없습니다."));
 
         return mapToResponseDto(partnerCompany);
     }
     //------------------------------------------------------------------------------------------------------------------
 
     /**
-     * 파트너 회사 정보를 업데이트합니다.
+     * 협력 회사 정보를 업데이트합니다.
      * 
-     * @param id        파트너 회사 ID
+     * @param id        협력 회사 ID
      * @param updateDto 업데이트할 정보
-     * @return 업데이트된 파트너 회사 정보
+     * @return 업데이트된 협력 회사 정보
      */
     @Transactional
     public PartnerCompanyResponseDto updatePartnerCompany(String id, UpdatePartnerCompanyDto updateDto) {
-        log.info("파트너 회사 정보 업데이트 요청 - ID: {}", id);
+        log.info("협력 회사 정보 업데이트 요청 - ID: {}", id);
 
         PartnerCompany partnerCompany = partnerCompanyRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                        "ID '" + id + "'에 해당하는 파트너사를 찾을 수 없습니다."));
+                        "ID '" + id + "'에 해당하는 협력사를 찾을 수 없습니다."));
 
         // corpCode 변경 시 CompanyProfile 업데이트
         if (updateDto.getCorpCode() != null && !updateDto.getCorpCode().isEmpty()) {
@@ -410,7 +410,7 @@ public class PartnerCompanyApiService {
                     .findByCorpCode(updateDto.getCorpCode());
             if (newCompanyProfile.isPresent()) {
                 partnerCompany.setCompanyProfile(newCompanyProfile.get());
-                log.info("파트너사 CompanyProfile 업데이트: ID={}, 새로운 corpCode={}", id, updateDto.getCorpCode());
+                log.info("협력사 CompanyProfile 업데이트: ID={}, 새로운 corpCode={}", id, updateDto.getCorpCode());
             } else {
                 throw new ResponseStatusException(HttpStatus.NOT_FOUND,
                         "새로운 기업코드 '" + updateDto.getCorpCode() + "'에 해당하는 회사 정보를 찾을 수 없습니다.");
@@ -429,39 +429,39 @@ public class PartnerCompanyApiService {
         partnerCompany.setUpdatedAt(LocalDateTime.now());
         PartnerCompany updatedPartner = partnerCompanyRepository.save(partnerCompany);
 
-        log.info("파트너 회사 정보 업데이트 완료 - ID: {}", updatedPartner.getId());
+        log.info("협력 회사 정보 업데이트 완료 - ID: {}", updatedPartner.getId());
         return mapToResponseDto(updatedPartner);
     }
     //------------------------------------------------------------------------------------------------------------------
 
     /**
-     * 파트너 회사를 삭제합니다. (INACTIVE 상태로 변경)
+     * 협력 회사를 삭제합니다. (INACTIVE 상태로 변경)
      * 
-     * @param id 파트너 회사 ID
+     * @param id 협력 회사 ID
      * @return 삭제 결과
      */
     @Transactional
     public Map<String, String> deletePartnerCompany(String id) {
-        log.info("파트너 회사 삭제 요청 - ID: {}", id);
+        log.info("협력 회사 삭제 요청 - ID: {}", id);
 
         PartnerCompany partnerCompany = partnerCompanyRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                        "ID '" + id + "'에 해당하는 파트너사를 찾을 수 없습니다."));
+                        "ID '" + id + "'에 해당하는 협력사를 찾을 수 없습니다."));
 
         partnerCompany.setStatus(PartnerCompanyStatus.INACTIVE);
         partnerCompany.setUpdatedAt(LocalDateTime.now());
         partnerCompanyRepository.save(partnerCompany);
 
-        log.info("파트너 회사 비활성화 완료 - ID: {}", id);
-        return Map.of("message", "파트너사가 성공적으로 비활성화되었습니다.", "id", id);
+        log.info("협력 회사 비활성화 완료 - ID: {}", id);
+        return Map.of("message", "협력사가 성공적으로 비활성화되었습니다.", "id", id);
     }
     //------------------------------------------------------------------------------------------------------------------
 
     /**
-     * 파트너 회사 엔티티를 응답 DTO로 변환합니다.
+     * 협력 회사 엔티티를 응답 DTO로 변환합니다.
      * 
-     * @param partnerCompany 파트너 회사 엔티티
-     * @return 파트너 회사 응답 DTO
+     * @param partnerCompany 협력 회사 엔티티
+     * @return 협력 회사 응답 DTO
      */
     private PartnerCompanyResponseDto mapToResponseDto(PartnerCompany partnerCompany) {
         return mapToResponseDto(partnerCompany, false);
@@ -469,11 +469,11 @@ public class PartnerCompanyApiService {
     //------------------------------------------------------------------------------------------------------------------
 
     /**
-     * 파트너 회사 엔티티를 응답 DTO로 변환합니다. (복원 플래그 포함)
+     * 협력 회사 엔티티를 응답 DTO로 변환합니다. (복원 플래그 포함)
      * 
-     * @param partnerCompany 파트너 회사 엔티티
+     * @param partnerCompany 협력 회사 엔티티
      * @param isRestored     복원 여부
-     * @return 파트너 회사 응답 DTO
+     * @return 협력 회사 응답 DTO
      */
     private PartnerCompanyResponseDto mapToResponseDto(PartnerCompany partnerCompany, boolean isRestored) {
         if (partnerCompany == null) {
@@ -517,19 +517,19 @@ public class PartnerCompanyApiService {
     //------------------------------------------------------------------------------------------------------------------
 
     /**
-     * 특정 본사/협력사의 파트너 회사 목록을 조회합니다.
+     * 특정 본사/협력사의 협력 회사 목록을 조회합니다.
      * 
      * @param headquartersId 본사 ID
      * @param partnerId      협력사 사용자 ID (선택사항)
      * @param page           페이지 번호 (1부터 시작)
      * @param pageSize       페이지당 항목 수
      * @param companyName    회사명 필터 (부분 일치)
-     * @return 페이지네이션을 포함한 파트너 회사 목록
+     * @return 페이지네이션을 포함한 협력 회사 목록
      */
     @Transactional(readOnly = true)
     public PaginatedPartnerCompanyResponseDto findAllPartnerCompaniesByOrganization(
             Long headquartersId, Long partnerId, int page, int pageSize, String companyName) {
-        log.info("조직별 파트너 회사 목록 조회 - 본사 ID: {}, 협력사 ID: {}, 페이지: {}, 크기: {}, 필터: {}",
+        log.info("조직별 협력 회사 목록 조회 - 본사 ID: {}, 협력사 ID: {}, 페이지: {}, 크기: {}, 필터: {}",
                 headquartersId, partnerId, page, pageSize, companyName);
 
         int validPage = Math.max(1, page);
@@ -540,7 +540,7 @@ public class PartnerCompanyApiService {
         Page<PartnerCompany> partnerCompaniesPage;
 
         if (partnerId != null) {
-            // 협력사 사용자인 경우 자신이 등록한 파트너사만 조회
+            // 협력사 사용자인 경우 자신이 등록한 협력사만 조회
             if (companyName != null && !companyName.isEmpty()) {
                 partnerCompaniesPage = partnerCompanyRepository
                         .findByPartnerIdAndCompanyNameContainingIgnoreCaseAndStatus(
@@ -550,7 +550,7 @@ public class PartnerCompanyApiService {
                         partnerId, PartnerCompanyStatus.ACTIVE, pageable);
             }
         } else {
-            // 본사 사용자인 경우 해당 본사의 모든 파트너사 조회
+            // 본사 사용자인 경우 해당 본사의 모든 협력사 조회
             if (companyName != null && !companyName.isEmpty()) {
                 partnerCompaniesPage = partnerCompanyRepository
                         .findByHeadquartersIdAndCompanyNameContainingIgnoreCaseAndStatus(
@@ -575,13 +575,13 @@ public class PartnerCompanyApiService {
     //------------------------------------------------------------------------------------------------------------------
 
     /**
-     * 시스템에 등록된 모든 활성 상태의 파트너사들의 고유한 회사명 목록을 조회합니다.
+     * 시스템에 등록된 모든 활성 상태의 협력사들의 고유한 회사명 목록을 조회합니다.
      * 
-     * @return 고유한 파트너사명 목록
+     * @return 고유한 협력사명 목록
      */
     @Transactional(readOnly = true)
     public List<String> getUniqueActivePartnerCompanyNames() {
-        log.info("모든 활성 파트너사의 고유한 회사명 목록 조회 요청");
+        log.info("모든 활성 협력사의 고유한 회사명 목록 조회 요청");
         List<PartnerCompany> activeCompanies = partnerCompanyRepository.findByStatus(PartnerCompanyStatus.ACTIVE);
         return activeCompanies.stream()
                 .filter(company -> company.getCompanyProfile() != null)
@@ -637,17 +637,17 @@ public class PartnerCompanyApiService {
     //------------------------------------------------------------------------------------------------------------------
 
     /**
-     * ID로 파트너 회사 엔티티를 조회합니다.
+     * ID로 협력 회사 엔티티를 조회합니다.
      */
     public PartnerCompany findEntityById(String id) {
         return partnerCompanyRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                        "ID '" + id + "'에 해당하는 파트너사를 찾을 수 없습니다."));
+                        "ID '" + id + "'에 해당하는 협력사를 찾을 수 없습니다."));
     }
     //------------------------------------------------------------------------------------------------------------------
 
     /**
-     * 파트너 회사 엔티티를 저장합니다.
+     * 협력 회사 엔티티를 저장합니다.
      */
     public PartnerCompany save(PartnerCompany partnerCompany) {
         return partnerCompanyRepository.save(partnerCompany);
@@ -655,7 +655,7 @@ public class PartnerCompanyApiService {
     //------------------------------------------------------------------------------------------------------------------
 
     /**
-     * 파트너 회사의 계정 생성 상태를 업데이트합니다.
+     * 협력 회사의 계정 생성 상태를 업데이트합니다.
      */
     @Transactional
     public void updateAccountCreatedStatus(String id, boolean accountCreated) {
@@ -663,7 +663,7 @@ public class PartnerCompanyApiService {
         partnerCompany.setAccountCreated(accountCreated);
         partnerCompany.setUpdatedAt(LocalDateTime.now());
         save(partnerCompany);
-        log.info("파트너사 계정 생성 상태 업데이트 완료 - ID: {}, accountCreated: {}", id, accountCreated);
+        log.info("협력사 계정 생성 상태 업데이트 완료 - ID: {}, accountCreated: {}", id, accountCreated);
     }
     //------------------------------------------------------------------------------------------------------------------
 }

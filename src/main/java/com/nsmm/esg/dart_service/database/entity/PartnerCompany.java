@@ -1,17 +1,3 @@
-/**
- * PartnerCompany - 협력사 관리 엔티티 (최소한 버전)
- * 
- * 설계 원칙:
- * - 계층형 구조 제거 (Auth Service에서 관리)
- * - 단순한 회사-소유자 매핑만 유지
- * - CompanyProfile 참조로 회사 정보 활용
- * 
- * 주요 변경사항:
- * - 계층형 관련 컬럼 모두 제거
- * - contract_end_date 제거
- * - headquartersId, partnerId 선택적 컬럼 추가
- * - userType으로 본사/협력사 구분
- */
 package com.nsmm.esg.dart_service.database.entity;
 
 import com.nsmm.esg.dart_service.partner.model.PartnerCompanyStatus;

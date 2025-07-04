@@ -1,6 +1,6 @@
 /**
  * @file PaginatedPartnerCompanyResponseDto.java
- * @description 페이지네이션을 포함한 파트너사 목록 응답 DTO입니다.
+ * @description 페이지네이션을 포함한 협력사 목록 응답 DTO입니다.
  */
 package com.nsmm.esg.dart_service.partner.dto;
 
@@ -16,13 +16,13 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Schema(description = "페이지네이션된 파트너사 목록 응답 DTO")
+@Schema(description = "페이지네이션된 협력사 목록 응답 DTO")
 public class PaginatedPartnerCompanyResponseDto {
     
-    @Schema(description = "현재 페이지의 파트너사 목록 데이터")
+    @Schema(description = "현재 페이지의 협력사 목록 데이터")
     private List<PartnerCompanyResponseDto> data;
     
-    @Schema(description = "전체 파트너사 개수 (필터링된 경우 필터링된 개수)", example = "123")
+    @Schema(description = "전체 협력사 개수 (필터링된 경우 필터링된 개수)", example = "123")
     private long total;
     
     @Schema(description = "현재 페이지 번호 (1부터 시작)", example = "1")

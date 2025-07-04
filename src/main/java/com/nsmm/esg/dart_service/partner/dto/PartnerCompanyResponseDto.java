@@ -1,8 +1,8 @@
 /**
  * @file PartnerCompanyResponseDto.java
- * @description 파트너사 조회 시 반환되는 응답 DTO입니다.
+ * @description 협력사 조회 시 반환되는 응답 DTO입니다.
  *              PartnerCompany 엔티티의 정보와 연관된 CompanyProfile의 회사 상세 정보를 포함합니다.
- *              각 파트너사는 본사(HEADQUARTERS) 또는 협력사(PARTNER)에 의해 소유됩니다.
+ *              각 협력사는 본사(HEADQUARTERS) 또는 협력사(PARTNER)에 의해 소유됩니다.
  */
 package com.nsmm.esg.dart_service.partner.dto;
 
@@ -21,29 +21,29 @@ import com.nsmm.esg.dart_service.partner.model.PartnerCompanyStatus;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Schema(description = "파트너사 조회 시 반환되는 응답 DTO. CompanyProfile의 회사 정보와 소유자 정보를 포함합니다.")
+@Schema(description = "협력사 조회 시 반환되는 응답 DTO. CompanyProfile의 회사 정보와 소유자 정보를 포함합니다.")
 public class PartnerCompanyResponseDto {
 
     // ====================================================================
     // PartnerCompany 기본 정보
     // ====================================================================
 
-    @Schema(description = "파트너사 고유 ID (UUID)", example = "a1b2c3d4-e5f6-7890-1234-567890abcdef")
+    @Schema(description = "협력사 고유 ID (UUID)", example = "a1b2c3d4-e5f6-7890-1234-567890abcdef")
     private String id;
 
     @Schema(description = "DART 기업 고유 코드 (8자리)", example = "00126380")
     private String corpCode;
 
-    @Schema(description = "파트너사 상태", example = "ACTIVE")
+    @Schema(description = "협력사 상태", example = "ACTIVE")
     private PartnerCompanyStatus status;
 
     @Schema(description = "계약 시작일", example = "2023-01-01")
     private LocalDate contractStartDate;
 
-    @Schema(description = "파트너사 등록 일시", example = "2023-01-01T10:00:00")
+    @Schema(description = "협력사 등록 일시", example = "2023-01-01T10:00:00")
     private LocalDateTime createdAt;
 
-    @Schema(description = "파트너사 정보 최종 수정 일시", example = "2023-01-01T10:00:00")
+    @Schema(description = "협력사 정보 최종 수정 일시", example = "2023-01-01T10:00:00")
     private LocalDateTime updatedAt;
 
     @Schema(description = "계정 생성 여부", example = "true")

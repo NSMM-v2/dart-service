@@ -1,6 +1,6 @@
 /**
  * @file UpdatePartnerCompanyDto.java
- * @description 기존 파트너사 정보 수정 요청 시 사용되는 DTO입니다.
+ * @description 기존 협력사 정보 수정 요청 시 사용되는 DTO입니다.
  *              모든 필드는 선택적으로 제공될 수 있으며, 제공된 필드만 업데이트됩니다.
  *              회사 정보는 CompanyProfile과의 연관관계를 통해 관리되므로 corpCode 변경 시
  *              CompanyProfile에서 자동으로 회사 정보를 조회합니다.
@@ -24,7 +24,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Schema(description = "파트너사 정보 업데이트 요청 시 사용되는 DTO. 모든 필드는 선택 사항입니다.")
+@Schema(description = "협력사 정보 업데이트 요청 시 사용되는 DTO. 모든 필드는 선택 사항입니다.")
 public class UpdatePartnerCompanyDto {
 
     @Size(min = 8, max = 8, message = "DART 기업 고유 코드는 8자리여야 합니다.")
@@ -32,10 +32,10 @@ public class UpdatePartnerCompanyDto {
     private String corpCode;
 
     @DateTimeFormat(pattern = "yyyy-MM-dd")
-    @Schema(description = "변경할 파트너사와의 계약 시작일 (YYYY-MM-DD 형식)", example = "2024-01-01", nullable = true)
+    @Schema(description = "변경할 협력사와의 계약 시작일 (YYYY-MM-DD 형식)", example = "2024-01-01", nullable = true)
     private LocalDate contractStartDate;
 
-    @Schema(description = "변경할 파트너사 상태 (예: ACTIVE, INACTIVE). 상태 변경은 신중해야 합니다.", example = "ACTIVE", nullable = true)
+    @Schema(description = "변경할 협력사 상태 (예: ACTIVE, INACTIVE). 상태 변경은 신중해야 합니다.", example = "ACTIVE", nullable = true)
     private PartnerCompanyStatus status;
 
     // ====================================================================

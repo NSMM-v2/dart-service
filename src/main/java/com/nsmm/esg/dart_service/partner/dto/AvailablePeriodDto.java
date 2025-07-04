@@ -8,9 +8,9 @@ import lombok.NoArgsConstructor;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 /**
- * 파트너사 재무제표 이용 가능 기간 정보 DTO
+ * 협력사 재무제표 이용 가능 기간 정보 DTO
  * 
- * 특정 파트너사의 DB에 저장된 재무제표 데이터가 존재하는 연도/분기 조합을 나타냅니다.
+ * 특정 협력사의 DB에 저장된 재무제표 데이터가 존재하는 연도/분기 조합을 나타냅니다.
  * 
  * @author ESG Project Team
  * @version 1.0
@@ -19,7 +19,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-@Schema(description = "파트너사 재무제표 이용 가능 기간 정보")
+@Schema(description = "협력사 재무제표 이용 가능 기간 정보")
 public class AvailablePeriodDto {
 
   @Schema(description = "사업연도 (YYYY 형식)", example = "2023", required = true)
