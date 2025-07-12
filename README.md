@@ -15,15 +15,13 @@
 
 ## 기술 스택
 
-| 분야 | 기술 |
-|------|------|
-| **Framework** | Spring Boot 3.5.0, Spring WebFlux |
-| **Reactive** | Reactor Core, WebClient |
-| **Messaging** | Apache Kafka 3.x |
-| **Database** | MySQL 8.0, JPA/Hibernate |
-| **Caching** | Redis, Spring Cache |
-| **Data Processing** | XBRL Parser, XML/JSON Converter |
-| **Documentation** | Swagger/OpenAPI 3.0 |
+[![Spring Boot](https://img.shields.io/badge/Framework-Spring%20Boot%203.5.0%2C%20Spring%20WebFlux-brightgreen.svg)](https://spring.io/projects/spring-boot)
+[![Reactor](https://img.shields.io/badge/Reactive-Reactor%20Core%2C%20WebClient-purple.svg)](https://projectreactor.io/)
+[![Kafka](https://img.shields.io/badge/Messaging-Apache%20Kafka%203.x-black.svg)](https://kafka.apache.org/)
+[![MySQL](https://img.shields.io/badge/Database-MySQL%208.0%2C%20JPA%2FHibernate-blue.svg)](https://www.mysql.com/)
+[![Redis](https://img.shields.io/badge/Caching-Redis%2C%20Spring%20Cache-red.svg)](https://redis.io/)
+[![XBRL](https://img.shields.io/badge/Data%20Processing-XBRL%20Parser%2C%20XML%2FJSON%20Converter-orange.svg)](https://www.xbrl.org/)
+[![Swagger](https://img.shields.io/badge/Documentation-Swagger%2FOpenAPI%203.0-green.svg)](https://swagger.io/)
 
 ## 시스템 아키텍처
 
